@@ -5,6 +5,7 @@
 ; ===== MAIN REROLL LOOP =====
 StartRerollLoop() {
     global IS_RUNNING, CURRENT_CYCLE, REROLL_ENABLED, ACTIVE_PROFILE, STOP_AFTER_CONFIRM, STOP_REASON_AFTER_CONFIRM
+    global LAST_DETECTED_STATE, LAST_STATE_STREAK, LAST_LOGGED_REROLL_STATE, UNKNOWN_REROLL_STATE_STREAK, LAST_REROLL_STATUS_LINE
 
     if (!REROLL_ENABLED) {
         MsgBox("Please load a profile first (F8).", "Error")
@@ -29,6 +30,11 @@ StartRerollLoop() {
     CURRENT_CYCLE := 0
     STOP_AFTER_CONFIRM := false
     STOP_REASON_AFTER_CONFIRM := ""
+    LAST_DETECTED_STATE := ""
+    LAST_STATE_STREAK := 0
+    LAST_LOGGED_REROLL_STATE := ""
+    UNKNOWN_REROLL_STATE_STREAK := 0
+    LAST_REROLL_STATUS_LINE := ""
     IS_RUNNING := true
 
     LogEvent("INFO", "RerollStarted", {
@@ -45,12 +51,18 @@ StartRerollLoop() {
 
 StopRerollLoop(reason := "Manually stopped") {
     global IS_RUNNING, CURRENT_CYCLE, STOP_AFTER_CONFIRM, STOP_REASON_AFTER_CONFIRM
+    global LAST_DETECTED_STATE, LAST_STATE_STREAK, LAST_LOGGED_REROLL_STATE, UNKNOWN_REROLL_STATE_STREAK, LAST_REROLL_STATUS_LINE
 
     IS_RUNNING := false
     SetTimer(RerollStateMachine, 0)
 
     STOP_AFTER_CONFIRM := false
     STOP_REASON_AFTER_CONFIRM := ""
+    LAST_DETECTED_STATE := ""
+    LAST_STATE_STREAK := 0
+    LAST_LOGGED_REROLL_STATE := ""
+    UNKNOWN_REROLL_STATE_STREAK := 0
+    LAST_REROLL_STATUS_LINE := ""
 
     PrintStatus("Reroll stopped | Reason: " . reason . " | Total cycles: " . CURRENT_CYCLE)
     LogEvent("INFO", "RerollStopped", {reason: reason, totalCycles: CURRENT_CYCLE})
@@ -60,6 +72,7 @@ RerollStateMachine() {
     global IS_RUNNING, CURRENT_CYCLE, ACTION_DELAY, MAX_CYCLES, LOG_STATE_CHANGE_ONLY
     global LOG_UNKNOWN_STATES, UNKNOWN_LOG_STREAK, UNKNOWN_STATE_DELAY
     global UNKNOWN_STATE_DELAY_FAST, UNKNOWN_SLOW_DELAY_STREAK, UNKNOWN_STATUS_STREAK
+    global LAST_LOGGED_REROLL_STATE, UNKNOWN_REROLL_STATE_STREAK, LAST_REROLL_STATUS_LINE
 
     if (!IS_RUNNING) {
         return
@@ -71,41 +84,38 @@ RerollStateMachine() {
     }
 
     state := DetectState()
-    static lastLoggedState := ""
-    static unknownStreak := 0
-    static lastStatusLine := ""
     statusLine := ""
     if (state = "Unknown") {
-        unknownStreak++
-        if (unknownStreak >= UNKNOWN_STATUS_STREAK) {
+        UNKNOWN_REROLL_STATE_STREAK++
+        if (UNKNOWN_REROLL_STATE_STREAK >= UNKNOWN_STATUS_STREAK) {
             statusLine := "State: Unknown | Cycle: " . CURRENT_CYCLE
         }
         if (LOG_UNKNOWN_STATES) {
-            shouldLogUnknown := (!LOG_STATE_CHANGE_ONLY || state != lastLoggedState) && (unknownStreak >= UNKNOWN_LOG_STREAK)
+            shouldLogUnknown := (!LOG_STATE_CHANGE_ONLY || state != LAST_LOGGED_REROLL_STATE) && (UNKNOWN_REROLL_STATE_STREAK >= UNKNOWN_LOG_STREAK)
             if (shouldLogUnknown) {
-                LogEvent("INFO", "StateDetected", {state: state, cycle: CURRENT_CYCLE, streak: unknownStreak})
-                lastLoggedState := state
+                LogEvent("INFO", "StateDetected", {state: state, cycle: CURRENT_CYCLE, streak: UNKNOWN_REROLL_STATE_STREAK})
+                LAST_LOGGED_REROLL_STATE := state
             }
         }
     } else {
-        unknownStreak := 0
+        UNKNOWN_REROLL_STATE_STREAK := 0
         statusLine := "State: " . state . " | Cycle: " . CURRENT_CYCLE
     }
 
-    if (statusLine != "" && statusLine != lastStatusLine) {
+    if (statusLine != "" && statusLine != LAST_REROLL_STATUS_LINE) {
         PrintStatus(statusLine)
-        lastStatusLine := statusLine
+        LAST_REROLL_STATUS_LINE := statusLine
     }
 
     if (state = "Error") {
-        if (!LOG_STATE_CHANGE_ONLY || state != lastLoggedState) {
+        if (!LOG_STATE_CHANGE_ONLY || state != LAST_LOGGED_REROLL_STATE) {
             LogEvent("WARN", "StateDetected", {state: state, cycle: CURRENT_CYCLE})
-            lastLoggedState := state
+            LAST_LOGGED_REROLL_STATE := state
         }
     } else if (state != "Unknown") {
-        if (!LOG_STATE_CHANGE_ONLY || state != lastLoggedState) {
+        if (!LOG_STATE_CHANGE_ONLY || state != LAST_LOGGED_REROLL_STATE) {
             LogEvent("INFO", "StateDetected", {state: state, cycle: CURRENT_CYCLE})
-            lastLoggedState := state
+            LAST_LOGGED_REROLL_STATE := state
         }
     }
 
@@ -119,7 +129,7 @@ RerollStateMachine() {
         Case "Confirm Selection":
             HandleConfirmSelectionState()
         Case "Unknown":
-            unknownDelay := unknownStreak >= UNKNOWN_SLOW_DELAY_STREAK ? UNKNOWN_STATE_DELAY : UNKNOWN_STATE_DELAY_FAST
+            unknownDelay := UNKNOWN_REROLL_STATE_STREAK >= UNKNOWN_SLOW_DELAY_STREAK ? UNKNOWN_STATE_DELAY : UNKNOWN_STATE_DELAY_FAST
             Sleep unknownDelay
         Case "Error":
             Sleep ACTION_DELAY

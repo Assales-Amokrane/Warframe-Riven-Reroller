@@ -26,16 +26,16 @@ EvaluateCandidate(rules, candidate) {
 
     slotsWithMode := []
     for slot in rules.positiveSlots {
-        if (slot.mode = "mandatory" || slot.mode = "desired") {
+        if (slot.mode != "indifferent") {
             slotsWithMode.Push(slot)
         }
     }
-    if (rules.negativeSlot.mode = "mandatory" || rules.negativeSlot.mode = "desired") {
+    if (rules.negativeSlot.mode != "indifferent") {
         slotsWithMode.Push(rules.negativeSlot)
     }
     for slot in slotsWithMode {
         if (slot.attrIds.Length = 0) {
-            return RejectCandidate(["Rule configuration is invalid: slots in mandatory/desired mode must contain attributes."])
+            return RejectCandidate(["Rule configuration is invalid: slots in mandatory/desired/undesired mode must contain attributes."])
         }
     }
 
@@ -71,6 +71,19 @@ EvaluateCandidate(rules, candidate) {
         }
     }
 
+    mandatoryTotalMatches := mandatoryPositiveMatches + mandatoryNegativeMatches
+
+    for index, slot in rules.positiveSlots {
+        if (slot.mode = "undesired" && SlotHasAnyMatch(slot, totals.positiveSet)) {
+            return RejectCandidate(["Positive attribute matches undesired slot " . index . "."], mandatoryTotalMatches)
+        }
+    }
+    if (rules.negativeSlot.mode = "undesired") {
+        if (negativeAttrId != "" && ArrayContains(rules.negativeSlot.attrIds, negativeAttrId)) {
+            return RejectCandidate(["Negative attribute matches the undesired negative slot."], mandatoryTotalMatches)
+        }
+    }
+
     desiredMatches := 0
     for slot in rules.positiveSlots {
         if (slot.mode = "desired" && SlotHasAnyMatch(slot, totals.positiveSet)) {
@@ -87,7 +100,7 @@ EvaluateCandidate(rules, candidate) {
         status: "KEEP",
         hardRejected: false,
         reasons: [],
-        mandatoryMatches: mandatoryPositiveMatches + mandatoryNegativeMatches,
+        mandatoryMatches: mandatoryTotalMatches,
         desiredMatches: desiredMatches
     }
 }

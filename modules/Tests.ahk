@@ -12,8 +12,11 @@ RunUnitTests() {
     RunTest("ParseAttributeLine spaced multiplier decimal", Func("Test_ParseAttributeLineSpacedMultiplierDecimal"), &total, &failed, &failures)
     RunTest("EvaluateCandidate mandatory/desired", Func("Test_EvaluateCandidateMandatoryDesired"), &total, &failed, &failures)
     RunTest("EvaluateCandidate desired negative allow-list", Func("Test_EvaluateCandidateDesiredNegativeAllowList"), &total, &failed, &failures)
+    RunTest("EvaluateCandidate undesired positive rejects", Func("Test_EvaluateCandidateUndesiredPositiveReject"), &total, &failed, &failures)
+    RunTest("EvaluateCandidate undesired negative rejects", Func("Test_EvaluateCandidateUndesiredNegativeReject"), &total, &failed, &failures)
     RunTest("CompareCandidates desired priority", Func("Test_CompareCandidatesDesiredPriority"), &total, &failed, &failures)
     RunTest("EvaluateCandidate invalid counts reject", Func("Test_EvaluateCandidateInvalidCount"), &total, &failed, &failures)
+    RunTest("ValidateRuleSlot rejects unknown attr id", Func("Test_ValidateRuleSlotRejectsUnknownAttrId"), &total, &failed, &failures)
     RunTest("State text classification", Func("Test_StateClassification"), &total, &failed, &failures)
 
     passed := total - failed
@@ -143,6 +146,52 @@ Test_EvaluateCandidateDesiredNegativeAllowList() {
     AssertEqual(2, result.mandatoryMatches)
 }
 
+Test_EvaluateCandidateUndesiredPositiveReject() {
+    rules := {
+        positiveSlots: [
+            {mode: "mandatory", attrIds: ["critical-chance"]},
+            {mode: "mandatory", attrIds: ["critical-damage"]},
+            {mode: "undesired", attrIds: ["multishot"]}
+        ],
+        negativeSlot: {mode: "indifferent", attrIds: []}
+    }
+
+    candidate := {
+        attributes: [
+            {attrId: "critical-chance", polarity: "positive"},
+            {attrId: "critical-damage", polarity: "positive"},
+            {attrId: "multishot", polarity: "positive"}
+        ]
+    }
+
+    result := EvaluateCandidate(rules, candidate)
+    AssertEqual("REJECT", result.status)
+    AssertEqual(2, result.mandatoryMatches)
+}
+
+Test_EvaluateCandidateUndesiredNegativeReject() {
+    rules := {
+        positiveSlots: [
+            {mode: "mandatory", attrIds: ["critical-chance"]},
+            {mode: "mandatory", attrIds: ["critical-damage"]},
+            {mode: "indifferent", attrIds: []}
+        ],
+        negativeSlot: {mode: "undesired", attrIds: ["zoom"]}
+    }
+
+    candidate := {
+        attributes: [
+            {attrId: "critical-chance", polarity: "positive"},
+            {attrId: "critical-damage", polarity: "positive"},
+            {attrId: "zoom", polarity: "negative"}
+        ]
+    }
+
+    result := EvaluateCandidate(rules, candidate)
+    AssertEqual("REJECT", result.status)
+    AssertEqual(2, result.mandatoryMatches)
+}
+
 Test_CompareCandidatesDesiredPriority() {
     rules := {
         positiveSlots: [
@@ -185,6 +234,11 @@ Test_EvaluateCandidateInvalidCount() {
     candidate := {attributes: [{attrId: "critical-chance", polarity: "positive"}]}
     result := EvaluateCandidate(rules, candidate)
     AssertEqual("REJECT", result.status)
+}
+
+Test_ValidateRuleSlotRejectsUnknownAttrId() {
+    validation := ValidateRuleSlot({mode: "mandatory", attrIds: ["not-a-real-attr-id"]}, "slot")
+    AssertTrue(!validation.ok, "ValidateRuleSlot should reject unknown attribute ids.")
 }
 
 Test_StateClassification() {

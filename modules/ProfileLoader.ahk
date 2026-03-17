@@ -146,6 +146,8 @@ ValidateConfigBundle(bundle) {
 }
 
 ValidateRuleSlot(slot, path) {
+    global ATTRIBUTE_ID_TO_LABEL
+
     if (!IsObject(slot)) {
         return {ok: false, message: path . " must be an object."}
     }
@@ -164,6 +166,19 @@ ValidateRuleSlot(slot, path) {
 
     if (Type(slot.attrIds) != "Array") {
         return {ok: false, message: path . ".attrIds must be an array."}
+    }
+
+    if (slot.mode != "indifferent" && slot.attrIds.Length = 0) {
+        return {ok: false, message: path . ".attrIds must not be empty for mode: " . slot.mode}
+    }
+
+    for index, attrId in slot.attrIds {
+        if (Type(attrId) != "String" || Trim(attrId) = "") {
+            return {ok: false, message: path . ".attrIds[" . index . "] must be a non-empty string."}
+        }
+        if (!ATTRIBUTE_ID_TO_LABEL.Has(attrId)) {
+            return {ok: false, message: path . ".attrIds[" . index . "] has unknown attribute id: " . attrId}
+        }
     }
 
     return {ok: true, message: ""}
