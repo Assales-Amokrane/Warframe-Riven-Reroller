@@ -23,19 +23,22 @@ EvaluateCandidate(rules, candidate) {
     if (rules.positiveSlots[1].attrIds.Length = 0 || rules.positiveSlots[2].attrIds.Length = 0) { ; this should never happen
         return RejectCandidate(["Rule configuration is invalid: Positive Slot 1 and Positive Slot 2 must contain attributes."])
     }
+    if (rules.positiveSlots[1].mode = "undesired" || rules.positiveSlots[2].mode = "undesired") {
+        return RejectCandidate(["Rule configuration is invalid: Positive Slot 1 and Positive Slot 2 cannot use undesired mode."])
+    }
 
-    slotsWithMode := []
+    slotsRequiringAttrIds := []
     for slot in rules.positiveSlots {
-        if (slot.mode != "indifferent") {
-            slotsWithMode.Push(slot)
+        if (SlotModeRequiresAttrIds(slot.mode)) {
+            slotsRequiringAttrIds.Push(slot)
         }
     }
-    if (rules.negativeSlot.mode != "indifferent") {
-        slotsWithMode.Push(rules.negativeSlot)
+    if (SlotModeRequiresAttrIds(rules.negativeSlot.mode)) {
+        slotsRequiringAttrIds.Push(rules.negativeSlot)
     }
-    for slot in slotsWithMode {
+    for slot in slotsRequiringAttrIds {
         if (slot.attrIds.Length = 0) {
-            return RejectCandidate(["Rule configuration is invalid: slots in mandatory/desired/undesired mode must contain attributes."])
+            return RejectCandidate(["Rule configuration is invalid: slots in mandatory and desired mode must contain attributes."])
         }
     }
 
@@ -73,15 +76,11 @@ EvaluateCandidate(rules, candidate) {
 
     mandatoryTotalMatches := mandatoryPositiveMatches + mandatoryNegativeMatches
 
-    for index, slot in rules.positiveSlots {
-        if (slot.mode = "undesired" && SlotHasAnyMatch(slot, totals.positiveSet)) {
-            return RejectCandidate(["Positive attribute matches undesired slot " . index . "."], mandatoryTotalMatches)
-        }
+    if (rules.positiveSlots[3].mode = "undesired" && totals.positiveCount > 2) {
+        return RejectCandidate(["Positive Slot 3 is undesired, but the Riven has a third positive attribute."], mandatoryTotalMatches)
     }
-    if (rules.negativeSlot.mode = "undesired") {
-        if (negativeAttrId != "" && ArrayContains(rules.negativeSlot.attrIds, negativeAttrId)) {
-            return RejectCandidate(["Negative attribute matches the undesired negative slot."], mandatoryTotalMatches)
-        }
+    if (rules.negativeSlot.mode = "undesired" && negativeAttrId != "") {
+        return RejectCandidate(["Negative Slot is undesired, but the Riven has a negative attribute."], mandatoryTotalMatches)
     }
 
     desiredMatches := 0
@@ -149,6 +148,10 @@ SlotHasAnyMatch(slot, candidateSet) {
         }
     }
     return false
+}
+
+SlotModeRequiresAttrIds(mode) {
+    return mode = "mandatory" || mode = "desired"
 }
 
 ComputeMaxDistinctSlotMatches(slots, candidateIds) {

@@ -136,6 +136,12 @@ ValidateConfigBundle(bundle) {
             return slotValidation
         }
     }
+    if (positiveSlots[1].mode = "undesired") {
+        return {ok: false, message: "positiveSlots[1] cannot use mode: undesired"}
+    }
+    if (positiveSlots[2].mode = "undesired") {
+        return {ok: false, message: "positiveSlots[2] cannot use mode: undesired"}
+    }
 
     negativeValidation := ValidateRuleSlot(bundle.profile.rules.negativeSlot, "negativeSlot")
     if (!negativeValidation.ok) {
@@ -168,7 +174,7 @@ ValidateRuleSlot(slot, path) {
         return {ok: false, message: path . ".attrIds must be an array."}
     }
 
-    if (slot.mode != "indifferent" && slot.attrIds.Length = 0) {
+    if ((slot.mode = "mandatory" || slot.mode = "desired") && slot.attrIds.Length = 0) {
         return {ok: false, message: path . ".attrIds must not be empty for mode: " . slot.mode}
     }
 
@@ -197,6 +203,13 @@ NormalizeRuleSet(rules) {
 }
 
 NormalizeRuleSlot(slot) {
+    if (slot.mode = "undesired") {
+        return {
+            mode: slot.mode,
+            attrIds: []
+        }
+    }
+
     uniqueIds := []
     seen := Map()
     for attrId in slot.attrIds {
@@ -223,7 +236,7 @@ ShowProfileOverviewDialog(title := "Riven Reroller Ready") {
 }
 
 ShowSingleProfileOverviewDialog(title) {
-    global ACTIVE_RULES, RELEASE_BUILD
+    global ACTIVE_RULES, RELEASE_BUILD, MAX_CYCLES
 
     result := "ok"
     panelWidth := 372
@@ -240,7 +253,7 @@ ShowSingleProfileOverviewDialog(title) {
     overviewGui.Add("Text", "xm w760 c203040", title)
 
     overviewGui.SetFont("s10 c505C68", "Segoe UI")
-    overviewGui.Add("Text", "xm y+6 w760", "Confirm the active profile and hotkeys before starting.")
+    overviewGui.Add("Text", "xm y+6 w760", "Confirm the active profile, reroll limit, and hotkeys before starting.")
 
     overviewGui.SetFont("s10", "Segoe UI")
     profileGroup := overviewGui.Add("GroupBox", "xm y+14 w760 h124", "Active Profile")
@@ -274,6 +287,10 @@ ShowSingleProfileOverviewDialog(title) {
     buttonY := hotkeyTopY + 154 + 20
     changeButton := overviewGui.Add("Button", "x" . profileX . " y" . buttonY . " w150 h34", "Change profile")
     okButton := overviewGui.Add("Button", "x" . (profileX + 162) . " y" . buttonY . " w110 h34 Default", "OK")
+    rerollLabelX := profileX + 288
+    overviewGui.Add("Text", "x" . rerollLabelX . " y" . (buttonY + 8) . " w112 c203040", "Maximum rerolls")
+    maxCyclesEdit := overviewGui.Add("Edit", "x" . (rerollLabelX + 120) . " y" . buttonY . " w96 Number", MAX_CYCLES)
+    overviewGui.Add("UpDown", "Range1-999999", MAX_CYCLES)
 
     changeButton.OnEvent("Click", OnChangeProfile)
     okButton.OnEvent("Click", OnOk)
@@ -285,13 +302,32 @@ ShowSingleProfileOverviewDialog(title) {
     return result
 
     OnChangeProfile(*) {
+        if (!ApplySessionSettings()) {
+            return
+        }
         result := "changeProfile"
         overviewGui.Destroy()
     }
 
     OnOk(*) {
+        if (!ApplySessionSettings()) {
+            return
+        }
         result := "ok"
         overviewGui.Destroy()
+    }
+
+    ApplySessionSettings() {
+        global MAX_CYCLES
+
+        if (!TryParseMaxCyclesValue(maxCyclesEdit.Value, &parsedMaxCycles, &errorMessage)) {
+            MsgBox(errorMessage, "Session Settings")
+            maxCyclesEdit.Focus()
+            return false
+        }
+
+        MAX_CYCLES := parsedMaxCycles
+        return true
     }
 }
 
@@ -305,7 +341,7 @@ AddRulePanel(overviewGui, x, y, width, height, panelTitle, slot) {
     overviewGui.Add("Text", "x" . (x + 14) . " y" . (y + 24) . " w" . (width - 28), FormatRuleModeLabel(slot.mode))
 
     overviewGui.SetFont("s9 c202B36", "Segoe UI")
-    overviewGui.Add("Edit", "x" . (x + 14) . " y" . (y + 48) . " w" . (width - 28) . " h84 ReadOnly -Wrap VScroll", FormatRuleAttrList(slot.attrIds))
+    overviewGui.Add("Edit", "x" . (x + 14) . " y" . (y + 48) . " w" . (width - 28) . " h84 ReadOnly -Wrap VScroll", FormatRuleAttrList(slot))
 }
 
 GetRuleSlotForOverview(slotType, index := 0) {
@@ -343,6 +379,29 @@ BuildCurrentProfileSummary() {
     }
 
     return JoinProfileOverviewLines(lines)
+}
+
+TryParseMaxCyclesValue(rawValue, &parsedValue, &errorMessage := "") {
+    rawText := Trim(rawValue)
+    parsedValue := 0
+
+    if (rawText = "") {
+        errorMessage := "Maximum rerolls must be a whole number between 1 and 999999."
+        return false
+    }
+    if (!RegExMatch(rawText, "^\d+$")) {
+        errorMessage := "Maximum rerolls must contain digits only."
+        return false
+    }
+
+    parsedValue := rawText + 0
+    if (parsedValue < 1 || parsedValue > 999999) {
+        errorMessage := "Maximum rerolls must be between 1 and 999999."
+        return false
+    }
+
+    errorMessage := ""
+    return true
 }
 
 FormatRuleModeLabel(mode) {
@@ -399,8 +458,13 @@ BuildTestingHotkeySummary() {
     return JoinProfileOverviewLines(lines)
 }
 
-FormatRuleAttrList(attrIds) {
+FormatRuleAttrList(slot) {
     global ATTRIBUTE_ID_TO_LABEL
+
+    attrIds := slot.attrIds
+    if (slot.mode = "undesired") {
+        return "  (slot must be empty)"
+    }
 
     if (attrIds.Length = 0) {
         return "  (none)"

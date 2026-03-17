@@ -11,7 +11,7 @@ The app reads Riven attributes with OCR, evaluates the current and incoming roll
 ## Quick Start
 
 1. Launch `dist/Riven Reroller.exe` or run `Riven Reroller Release.ahk`.
-2. Press `F8` and load a JSON profile.
+2. Press `F8`, load a JSON profile, and set the maximum rerolls for this session on the overview page.
 3. Open the Warframe Riven reroll screen and make sure the game window can be focused.
 4. Press `F9` to start the reroll loop.
 5. Press `F10` to stop or `Esc` to exit.
@@ -77,9 +77,15 @@ The app expects a JSON bundle with:
 Each slot uses:
 
 - `mode`: `mandatory`, `desired`, `undesired`, or `indifferent`
-- `attrIds`: an array of attribute ids
+- `attrIds`: an array of attribute ids for `mandatory` and `desired`; the current configurator exports `undesired` with an empty array
 
 The loader validates the schema version, slot structure, and attribute ids before enabling rerolling.
+
+Current configurator `undesired` behavior is slot-level:
+
+- `positiveSlots[3]` with `mode: "undesired"` means the Riven must not have a third positive attribute
+- `negativeSlot` with `mode: "undesired"` means the Riven must not have a negative attribute
+- `positiveSlots[1]` and `positiveSlots[2]` cannot use `undesired`
 
 This repository does not generate profile JSON by itself; it only consumes exported profiles from the configurator linked above.
 

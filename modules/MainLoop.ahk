@@ -4,7 +4,7 @@
 
 ; ===== MAIN REROLL LOOP =====
 StartRerollLoop() {
-    global IS_RUNNING, CURRENT_CYCLE, REROLL_ENABLED, ACTIVE_PROFILE, STOP_AFTER_CONFIRM, STOP_REASON_AFTER_CONFIRM
+    global IS_RUNNING, CURRENT_CYCLE, REROLL_ENABLED, ACTIVE_PROFILE, STOP_AFTER_CONFIRM, STOP_REASON_AFTER_CONFIRM, MAX_CYCLES
     global LAST_DETECTED_STATE, LAST_STATE_STREAK, LAST_LOGGED_REROLL_STATE, UNKNOWN_REROLL_STATE_STREAK, LAST_REROLL_STATUS_LINE
 
     if (!REROLL_ENABLED) {
@@ -40,10 +40,15 @@ StartRerollLoop() {
     LogEvent("INFO", "RerollStarted", {
         profileId: ACTIVE_PROFILE.profileId,
         profileName: ACTIVE_PROFILE.profileName,
-        weaponName: ACTIVE_PROFILE.weaponName
+        weaponName: ACTIVE_PROFILE.weaponName,
+        maxCycles: MAX_CYCLES
     })
 
-    PrintStatus("Reroll started | Profile: " . ACTIVE_PROFILE.profileName . " | Press F10 to stop")
+    PrintStatus(
+        "Reroll started | Profile: " . ACTIVE_PROFILE.profileName
+        . " | Max cycles: " . MAX_CYCLES
+        . " | Press F10 to stop"
+    )
     Sleep 150
 
     SetTimer(RerollStateMachine, 100)
