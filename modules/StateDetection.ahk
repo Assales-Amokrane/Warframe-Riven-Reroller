@@ -61,7 +61,7 @@ DetectStateDetailed() {
             best := mainCheck
         }
 
-        Sleep 60
+        SleepRandomized(60)
     }
 
     return best

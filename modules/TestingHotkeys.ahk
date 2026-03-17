@@ -143,7 +143,7 @@ F5:: {
     overlays.Push(overlay)
     
     ; Auto-close after 3 seconds
-    SetTimer(DestroyOverlays.Bind(overlays), -3000)
+    SetTimer(DestroyOverlays.Bind(overlays), -GetRandomizedDelay(3000, 1))
     
     PrintStatus("RED=Main | GREEN=Confirm Cycle | BLUE=Confirm Selection (3 sec)")
 }

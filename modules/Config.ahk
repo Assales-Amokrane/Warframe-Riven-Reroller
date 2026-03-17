@@ -5,6 +5,12 @@ global IS_RUNNING := false
 global CURRENT_CYCLE := 0
 global MAX_CYCLES := 100
 global ACTION_DELAY := 3000
+global START_CYCLE_TO_CONFIRM_DELAY := 2000
+global START_SELECTION_TO_CONFIRM_DELAY := 2000
+global POST_CONFIRM_SELECTION_DELAY := 2000
+global TIMER_JITTER_PERCENT := 0.10
+global CLICK_POSITION_JITTER_PX := 5
+global REROLL_TICK_DELAY := 100
 
 global OLD_RIVEN := {}
 global NEW_RIVEN := {}
@@ -277,6 +283,36 @@ GetStateArea(areaName) {
 GetActionCoord(coordName) {
     global ACTION_COORDS
     return ACTION_COORDS.%coordName%
+}
+
+GetRandomizedDelay(baseDelay, minimumDelay := 0, jitterPercent := "") {
+    global TIMER_JITTER_PERCENT
+
+    percent := (jitterPercent = "") ? TIMER_JITTER_PERCENT : jitterPercent
+    adjustedDelay := baseDelay
+    if (percent > 0) {
+        adjustedDelay := Round(baseDelay * Random(1 - percent, 1 + percent))
+    }
+
+    return Max(adjustedDelay, minimumDelay)
+}
+
+SleepRandomized(baseDelay, minimumDelay := 0, jitterPercent := "") {
+    Sleep(GetRandomizedDelay(baseDelay, minimumDelay, jitterPercent))
+}
+
+ApplyRandomClickOffset(basePoint, maxOffset := "") {
+    global CLICK_POSITION_JITTER_PX
+
+    offset := (maxOffset = "") ? CLICK_POSITION_JITTER_PX : maxOffset
+    if (offset <= 0) {
+        return {x: basePoint.x, y: basePoint.y}
+    }
+
+    return {
+        x: basePoint.x + Random(-offset, offset),
+        y: basePoint.y + Random(-offset, offset)
+    }
 }
 
 SaveLastProfilePath(path) {

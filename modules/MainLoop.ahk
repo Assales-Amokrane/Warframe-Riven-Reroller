@@ -49,9 +49,9 @@ StartRerollLoop() {
         . " | Max cycles: " . MAX_CYCLES
         . " | Press F10 to stop"
     )
-    Sleep 150
+    SleepRandomized(150)
 
-    SetTimer(RerollStateMachine, 100)
+    ScheduleRerollStateMachineTick()
 }
 
 StopRerollLoop(reason := "Manually stopped") {
@@ -59,7 +59,7 @@ StopRerollLoop(reason := "Manually stopped") {
     global LAST_DETECTED_STATE, LAST_STATE_STREAK, LAST_LOGGED_REROLL_STATE, UNKNOWN_REROLL_STATE_STREAK, LAST_REROLL_STATUS_LINE
 
     IS_RUNNING := false
-    SetTimer(RerollStateMachine, 0)
+    SetTimer(RunRerollStateMachineTick, 0)
 
     STOP_AFTER_CONFIRM := false
     STOP_REASON_AFTER_CONFIRM := ""
@@ -71,6 +71,24 @@ StopRerollLoop(reason := "Manually stopped") {
 
     PrintStatus("Reroll stopped | Reason: " . reason . " | Total cycles: " . CURRENT_CYCLE)
     LogEvent("INFO", "RerollStopped", {reason: reason, totalCycles: CURRENT_CYCLE})
+}
+
+ScheduleRerollStateMachineTick() {
+    global REROLL_TICK_DELAY
+    SetTimer(RunRerollStateMachineTick, -GetRandomizedDelay(REROLL_TICK_DELAY, 1))
+}
+
+RunRerollStateMachineTick() {
+    global IS_RUNNING
+
+    if (!IS_RUNNING) {
+        return
+    }
+
+    RerollStateMachine()
+    if (IS_RUNNING) {
+        ScheduleRerollStateMachineTick()
+    }
 }
 
 RerollStateMachine() {
@@ -135,20 +153,20 @@ RerollStateMachine() {
             HandleConfirmSelectionState()
         Case "Unknown":
             unknownDelay := UNKNOWN_REROLL_STATE_STREAK >= UNKNOWN_SLOW_DELAY_STREAK ? UNKNOWN_STATE_DELAY : UNKNOWN_STATE_DELAY_FAST
-            Sleep unknownDelay
+            SleepRandomized(unknownDelay)
         Case "Error":
-            Sleep ACTION_DELAY
+            SleepRandomized(ACTION_DELAY)
     }
 }
 
 HandleCycleState() {
-    global OLD_RIVEN, ACTION_DELAY
+    global OLD_RIVEN, ACTION_DELAY, START_CYCLE_TO_CONFIRM_DELAY
 
     OLD_RIVEN := ReadRivenAttributes("old")
     if (OLD_RIVEN.HasOwnProp("error")) {
         PrintStatus("Error reading old riven attributes: " . OLD_RIVEN.error)
         LogEvent("WARN", "OldRivenReadFailed", {error: OLD_RIVEN.error})
-        Sleep ACTION_DELAY
+        SleepRandomized(ACTION_DELAY)
         return
     }
 
@@ -159,7 +177,7 @@ HandleCycleState() {
         return
     }
 
-    Sleep ACTION_DELAY
+    SleepRandomized(START_CYCLE_TO_CONFIRM_DELAY)
 }
 
 HandleConfirmCycleState() {
@@ -170,17 +188,18 @@ HandleConfirmCycleState() {
         return
     }
 
-    Sleep ACTION_DELAY + 2000
+    SleepRandomized(ACTION_DELAY + 2000)
 }
 
 HandleSelectionState() {
     global NEW_RIVEN, OLD_RIVEN, ACTION_DELAY, ACTIVE_RULES, STOP_AFTER_CONFIRM, STOP_REASON_AFTER_CONFIRM
+    global START_SELECTION_TO_CONFIRM_DELAY
 
     NEW_RIVEN := ReadRivenAttributes("new")
     if (NEW_RIVEN.HasOwnProp("error")) {
         PrintStatus("Error reading new riven attributes: " . NEW_RIVEN.error)
         LogEvent("WARN", "NewRivenReadFailed", {error: NEW_RIVEN.error})
-        Sleep ACTION_DELAY
+        SleepRandomized(ACTION_DELAY)
         return
     }
 
@@ -208,12 +227,12 @@ HandleSelectionState() {
     })
 
     if (winner = "old") {
-        Sleep 500
+        SleepRandomized(500)
         if (!PickOldRiven()) {
             StopRerollLoop("Warframe window not focused while picking old riven.")
             return
         }
-        Sleep 500
+        SleepRandomized(500)
     } else {
         if (IsPerfectRiven(NEW_RIVEN)) {
             STOP_AFTER_CONFIRM := true
@@ -227,11 +246,11 @@ HandleSelectionState() {
         return
     }
 
-    Sleep ACTION_DELAY
+    SleepRandomized(START_SELECTION_TO_CONFIRM_DELAY)
 }
 
 HandleConfirmSelectionState() {
-    global ACTION_DELAY, CURRENT_CYCLE, STOP_AFTER_CONFIRM, STOP_REASON_AFTER_CONFIRM
+    global ACTION_DELAY, CURRENT_CYCLE, STOP_AFTER_CONFIRM, STOP_REASON_AFTER_CONFIRM, POST_CONFIRM_SELECTION_DELAY
 
     if (!ConfirmSelectionAction()) {
         StopRerollLoop("Warframe window not focused while confirming selection.")
@@ -246,5 +265,5 @@ HandleConfirmSelectionState() {
         return
     }
 
-    Sleep ACTION_DELAY
+    SleepRandomized(POST_CONFIRM_SELECTION_DELAY)
 }

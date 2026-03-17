@@ -25,11 +25,18 @@ SafeClickAction(actionName) {
         return false
     }
 
-    coords := GetActionCoord(actionName)
-    Click coords.x, coords.y
-    Sleep 100
+    baseCoords := GetActionCoord(actionName)
+    clickCoords := ApplyRandomClickOffset(baseCoords)
+    Click clickCoords.x, clickCoords.y
+    SleepRandomized(100)
 
-    LogEvent("INFO", "ActionClick", {action: actionName, x: coords.x, y: coords.y})
+    LogEvent("INFO", "ActionClick", {
+        action: actionName,
+        x: clickCoords.x,
+        y: clickCoords.y,
+        baseX: baseCoords.x,
+        baseY: baseCoords.y
+    })
     return true
 }
 

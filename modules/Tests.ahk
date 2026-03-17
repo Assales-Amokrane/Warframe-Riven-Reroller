@@ -16,6 +16,7 @@ RunUnitTests() {
     RunTest("EvaluateCandidate undesired positive keeps two positives", Func("Test_EvaluateCandidateUndesiredPositiveKeep"), &total, &failed, &failures)
     RunTest("EvaluateCandidate undesired negative rejects any negative", Func("Test_EvaluateCandidateUndesiredNegativeReject"), &total, &failed, &failures)
     RunTest("CompareCandidates desired priority", Func("Test_CompareCandidatesDesiredPriority"), &total, &failed, &failures)
+    RunTest("CompareCandidates rejected fallback prefers more mandatory", Func("Test_CompareCandidatesRejectedFallback"), &total, &failed, &failures)
     RunTest("EvaluateCandidate invalid counts reject", Func("Test_EvaluateCandidateInvalidCount"), &total, &failed, &failures)
     RunTest("ValidateRuleSlot allows empty undesired", Func("Test_ValidateRuleSlotAllowsEmptyUndesired"), &total, &failed, &failures)
     RunTest("NormalizeRuleSlot clears undesired attributes", Func("Test_NormalizeRuleSlotClearsUndesiredAttributes"), &total, &failed, &failures)
@@ -24,6 +25,9 @@ RunUnitTests() {
     RunTest("TryParseMaxCyclesValue invalid zero", Func("Test_TryParseMaxCyclesValueInvalidZero"), &total, &failed, &failures)
     RunTest("ValidateRuleSlot rejects unknown attr id", Func("Test_ValidateRuleSlotRejectsUnknownAttrId"), &total, &failed, &failures)
     RunTest("State text classification", Func("Test_StateClassification"), &total, &failed, &failures)
+    RunTest("Randomized delay stays within jitter range", Func("Test_GetRandomizedDelayRange"), &total, &failed, &failures)
+    RunTest("Randomized delay honors minimum", Func("Test_GetRandomizedDelayMinimum"), &total, &failed, &failures)
+    RunTest("Randomized click offset stays within range", Func("Test_ApplyRandomClickOffsetRange"), &total, &failed, &failures)
 
     passed := total - failed
     summary := "Tests run: " . total . "`nPassed: " . passed . "`nFailed: " . failed
@@ -249,6 +253,33 @@ Test_CompareCandidatesDesiredPriority() {
     AssertEqual("incoming", winner)
 }
 
+Test_CompareCandidatesRejectedFallback() {
+    rules := {
+        positiveSlots: [
+            {mode: "mandatory", attrIds: ["critical-chance"]},
+            {mode: "mandatory", attrIds: ["critical-damage"]},
+            {mode: "indifferent", attrIds: []}
+        ],
+        negativeSlot: {mode: "indifferent", attrIds: []}
+    }
+
+    currentCandidate := {
+        attributes: [
+            {attrId: "damage", polarity: "positive"},
+            {attrId: "multishot", polarity: "positive"}
+        ]
+    }
+    incomingCandidate := {
+        attributes: [
+            {attrId: "critical-chance", polarity: "positive"},
+            {attrId: "damage", polarity: "positive"}
+        ]
+    }
+
+    winner := CompareCandidates(rules, currentCandidate, incomingCandidate)
+    AssertEqual("incoming", winner)
+}
+
 Test_EvaluateCandidateInvalidCount() {
     rules := {
         positiveSlots: [
@@ -333,4 +364,53 @@ Test_StateClassification() {
 
     confirmSelection := ClassifyConfirmSelectionText("Cycle your current Riven into your current selection?")
     AssertEqual("Confirm Selection", confirmSelection.state)
+}
+
+Test_GetRandomizedDelayRange() {
+    global TIMER_JITTER_PERCENT
+
+    originalPercent := TIMER_JITTER_PERCENT
+    try {
+        TIMER_JITTER_PERCENT := 0.10
+
+        loop 200 {
+            randomized := GetRandomizedDelay(1000)
+            AssertTrue(randomized >= 900 && randomized <= 1100, "Randomized delay fell outside the expected 10% range.")
+        }
+    } finally {
+        TIMER_JITTER_PERCENT := originalPercent
+    }
+}
+
+Test_GetRandomizedDelayMinimum() {
+    global TIMER_JITTER_PERCENT
+
+    originalPercent := TIMER_JITTER_PERCENT
+    try {
+        TIMER_JITTER_PERCENT := 0.10
+
+        loop 50 {
+            randomized := GetRandomizedDelay(5, 7)
+            AssertTrue(randomized >= 7, "Randomized delay should not be lower than the supplied minimum.")
+        }
+    } finally {
+        TIMER_JITTER_PERCENT := originalPercent
+    }
+}
+
+Test_ApplyRandomClickOffsetRange() {
+    global CLICK_POSITION_JITTER_PX
+
+    originalOffset := CLICK_POSITION_JITTER_PX
+    try {
+        CLICK_POSITION_JITTER_PX := 5
+
+        loop 200 {
+            randomized := ApplyRandomClickOffset({x: 100, y: 200})
+            AssertTrue(randomized.x >= 95 && randomized.x <= 105, "Randomized click X fell outside the expected range.")
+            AssertTrue(randomized.y >= 195 && randomized.y <= 205, "Randomized click Y fell outside the expected range.")
+        }
+    } finally {
+        CLICK_POSITION_JITTER_PX := originalOffset
+    }
 }

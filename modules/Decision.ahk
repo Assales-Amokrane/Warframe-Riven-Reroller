@@ -218,22 +218,23 @@ CompareCandidates(rules, currentCandidate, incomingCandidate) {
     if (currentResult.status = "KEEP" && incomingResult.status = "REJECT") {
         return "current"
     }
-    if (currentResult.status = "REJECT" && incomingResult.status = "REJECT") {
-        return "current"
-    }
 
-    if (incomingResult.desiredMatches > currentResult.desiredMatches) {
-        return "incoming"
-    }
-    if (currentResult.desiredMatches > incomingResult.desiredMatches) {
-        return "current"
-    }
-
-    if (incomingResult.mandatoryMatches > currentResult.mandatoryMatches) {
+    if (ShouldPreferIncomingResult(currentResult, incomingResult)) {
         return "incoming"
     }
 
     return "current"
+}
+
+ShouldPreferIncomingResult(currentResult, incomingResult) {
+    if (incomingResult.desiredMatches > currentResult.desiredMatches) {
+        return true
+    }
+    if (currentResult.desiredMatches > incomingResult.desiredMatches) {
+        return false
+    }
+
+    return incomingResult.mandatoryMatches > currentResult.mandatoryMatches
 }
 
 CompareRivens(oldRiven, newRiven) {
