@@ -10,6 +10,66 @@ global START_SELECTION_TO_CONFIRM_DELAY := 2000
 global POST_CONFIRM_SELECTION_DELAY := 2000
 global TIMER_JITTER_PERCENT := 0.10
 global CLICK_POSITION_JITTER_PX := 5
+global HUMAN_MOUSE_ENABLED := true
+global HUMAN_MOUSE_MIN_DURATION_MS := 110
+global HUMAN_MOUSE_MAX_DURATION_MS := 320
+global HUMAN_MOUSE_MS_PER_PIXEL := 0.22
+global HUMAN_MOUSE_PIXELS_PER_STEP := 38
+global HUMAN_MOUSE_MIN_STEPS := 6
+global HUMAN_MOUSE_MAX_STEPS := 16
+global HUMAN_MOUSE_CURVE_STRENGTH := 0.10
+global HUMAN_MOUSE_CURVE_MAX_OFFSET_PX := 60
+global HUMAN_MOUSE_OVERSHOOT_CHANCE := 0.35
+global HUMAN_MOUSE_OVERSHOOT_MIN_DISTANCE := 140
+global HUMAN_MOUSE_OVERSHOOT_MIN_PX := 6
+global HUMAN_MOUSE_OVERSHOOT_MAX_PX := 22
+global HUMAN_MOUSE_OVERSHOOT_LATERAL_JITTER_PX := 4
+global HUMAN_MOUSE_OVERSHOOT_CLICK_CHANCE := 0.08
+global HUMAN_MOUSE_OVERSHOOT_CLICK_PAUSE_MIN_MS := 45
+global HUMAN_MOUSE_OVERSHOOT_CLICK_PAUSE_MAX_MS := 180
+global HUMAN_MOUSE_OVERSHOOT_CORRECTION_MIN_MS := 30
+global HUMAN_MOUSE_OVERSHOOT_CORRECTION_MAX_MS := 90
+global HUMAN_MOUSE_IDLE_DURING_SLEEP := true
+global HUMAN_MOUSE_IDLE_SLEEP_CHANCE := 0.65
+global HUMAN_MOUSE_IDLE_SLEEP_MIN_DELAY_MS := 260
+global HUMAN_MOUSE_IDLE_SLEEP_MAX_MOVES := 2
+global HUMAN_MOUSE_IDLE_SLEEP_PAUSE_MIN_MS := 80
+global HUMAN_MOUSE_IDLE_SLEEP_PAUSE_MAX_MS := 480
+global HUMAN_MOUSE_IDLE_MOVE_BUFFER_MS := 170
+global HUMAN_MOUSE_IDLE_NEAR_MOVE_CHANCE := 0.65
+global HUMAN_MOUSE_IDLE_NEAR_MIN_PX := 8
+global HUMAN_MOUSE_IDLE_NEAR_MAX_PX := 40
+global HUMAN_MOUSE_IDLE_FAR_MIN_PX := 45
+global HUMAN_MOUSE_IDLE_FAR_MAX_PX := 170
+global HUMAN_MOUSE_IDLE_FAST_MOVE_CHANCE := 0.45
+global HUMAN_MOUSE_IDLE_FAST_SPEED_MIN := 0.55
+global HUMAN_MOUSE_IDLE_FAST_SPEED_MAX := 0.90
+global HUMAN_MOUSE_IDLE_SLOW_SPEED_MIN := 1.15
+global HUMAN_MOUSE_IDLE_SLOW_SPEED_MAX := 1.75
+; Safe key list assumes a US keyboard layout for punctuation keys.
+global SAFE_KEYSTROKE_ENABLED := true
+global SAFE_KEYSTROKE_PRESS_CHANCE := 0.10
+global SAFE_KEYSTROKE_MIN_DELAY_MS := 220
+global SAFE_KEYSTROKE_MAX_PRESSES_PER_SLEEP := 1
+global SAFE_KEYSTROKE_HOLD_MIN_MS := 25
+global SAFE_KEYSTROKE_HOLD_MAX_MS := 110
+global SAFE_KEYSTROKE_POST_PRESS_MIN_MS := 35
+global SAFE_KEYSTROKE_POST_PRESS_MAX_MS := 120
+global SAFE_KEYSTROKES := [
+    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+    "``", "-", "=", "[", "]", "\", ";", "'", ",", ".", "/",
+    "{Shift}", "{Ctrl}", "{Alt}", "{CapsLock}",
+    "{Up}", "{Down}", "{Left}", "{Right}"
+]
+global HUMAN_LONG_WAIT_ENABLED := true
+global HUMAN_LONG_WAIT_PRE_CYCLE_CHANCE := 0.10
+global HUMAN_LONG_WAIT_PRE_CYCLE_MIN_MS := 1800
+global HUMAN_LONG_WAIT_PRE_CYCLE_MAX_MS := 5200
+global HUMAN_LONG_WAIT_PRE_KEEP_CHANCE := 0.14
+global HUMAN_LONG_WAIT_PRE_KEEP_MIN_MS := 1500
+global HUMAN_LONG_WAIT_PRE_KEEP_MAX_MS := 4200
+global HUMAN_MOUSE_DURATION_JITTER_PERCENT := 0.18
+global HUMAN_MOUSE_STEP_DELAY_JITTER_PERCENT := 0.25
 global REROLL_TICK_DELAY := 100
 
 global OLD_RIVEN := {}
@@ -298,7 +358,7 @@ GetRandomizedDelay(baseDelay, minimumDelay := 0, jitterPercent := "") {
 }
 
 SleepRandomized(baseDelay, minimumDelay := 0, jitterPercent := "") {
-    Sleep(GetRandomizedDelay(baseDelay, minimumDelay, jitterPercent))
+    SleepWithHumanMouseActivity(GetRandomizedDelay(baseDelay, minimumDelay, jitterPercent))
 }
 
 ApplyRandomClickOffset(basePoint, maxOffset := "") {
@@ -313,6 +373,10 @@ ApplyRandomClickOffset(basePoint, maxOffset := "") {
         x: basePoint.x + Random(-offset, offset),
         y: basePoint.y + Random(-offset, offset)
     }
+}
+
+ClampNumber(value, minValue, maxValue) {
+    return Min(Max(value, minValue), maxValue)
 }
 
 SaveLastProfilePath(path) {

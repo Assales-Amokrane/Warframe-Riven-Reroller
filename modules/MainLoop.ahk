@@ -160,7 +160,7 @@ RerollStateMachine() {
 }
 
 HandleCycleState() {
-    global OLD_RIVEN, ACTION_DELAY, START_CYCLE_TO_CONFIRM_DELAY
+    global OLD_RIVEN, ACTION_DELAY, START_CYCLE_TO_CONFIRM_DELAY, IS_RUNNING
 
     OLD_RIVEN := ReadRivenAttributes("old")
     if (OLD_RIVEN.HasOwnProp("error")) {
@@ -171,6 +171,11 @@ HandleCycleState() {
     }
 
     LogEvent("INFO", "OldRivenRead", {count: OLD_RIVEN.count})
+
+    MaybeApplyHumanLongWait("preCycleStart")
+    if (!IS_RUNNING) {
+        return
+    }
 
     if (!StartCycle()) {
         StopRerollLoop("Warframe window not focused while attempting to start cycle.")
@@ -192,7 +197,7 @@ HandleConfirmCycleState() {
 }
 
 HandleSelectionState() {
-    global NEW_RIVEN, OLD_RIVEN, ACTION_DELAY, ACTIVE_RULES, STOP_AFTER_CONFIRM, STOP_REASON_AFTER_CONFIRM
+    global NEW_RIVEN, OLD_RIVEN, ACTION_DELAY, ACTIVE_RULES, STOP_AFTER_CONFIRM, STOP_REASON_AFTER_CONFIRM, IS_RUNNING
     global START_SELECTION_TO_CONFIRM_DELAY
 
     NEW_RIVEN := ReadRivenAttributes("new")
@@ -225,6 +230,11 @@ HandleSelectionState() {
         newDesired: newResult.desiredMatches,
         newMandatory: newResult.mandatoryMatches
     })
+
+    MaybeApplyHumanLongWait("preKeepSelection")
+    if (!IS_RUNNING) {
+        return
+    }
 
     if (winner = "old") {
         SleepRandomized(500)
@@ -266,4 +276,54 @@ HandleConfirmSelectionState() {
     }
 
     SleepRandomized(POST_CONFIRM_SELECTION_DELAY)
+}
+
+MaybeApplyHumanLongWait(waitPhase) {
+    global CURRENT_CYCLE
+
+    waitMs := GetHumanLongWaitDuration(waitPhase)
+    if (waitMs <= 0) {
+        return 0
+    }
+
+    LogEvent("INFO", "HumanLongWait", {
+        phase: waitPhase,
+        durationMs: waitMs,
+        cycle: CURRENT_CYCLE
+    })
+    SleepRandomized(waitMs, 1, 0)
+    return waitMs
+}
+
+GetHumanLongWaitDuration(waitPhase) {
+    global HUMAN_LONG_WAIT_ENABLED
+    global HUMAN_LONG_WAIT_PRE_CYCLE_CHANCE, HUMAN_LONG_WAIT_PRE_CYCLE_MIN_MS, HUMAN_LONG_WAIT_PRE_CYCLE_MAX_MS
+    global HUMAN_LONG_WAIT_PRE_KEEP_CHANCE, HUMAN_LONG_WAIT_PRE_KEEP_MIN_MS, HUMAN_LONG_WAIT_PRE_KEEP_MAX_MS
+
+    if (!HUMAN_LONG_WAIT_ENABLED) {
+        return 0
+    }
+
+    switch waitPhase {
+        case "preCycleStart":
+            waitChance := HUMAN_LONG_WAIT_PRE_CYCLE_CHANCE
+            minDelayMs := HUMAN_LONG_WAIT_PRE_CYCLE_MIN_MS
+            maxDelayMs := HUMAN_LONG_WAIT_PRE_CYCLE_MAX_MS
+        case "preKeepSelection":
+            waitChance := HUMAN_LONG_WAIT_PRE_KEEP_CHANCE
+            minDelayMs := HUMAN_LONG_WAIT_PRE_KEEP_MIN_MS
+            maxDelayMs := HUMAN_LONG_WAIT_PRE_KEEP_MAX_MS
+        default:
+            return 0
+    }
+
+    if (Random(0.0, 1.0) > waitChance) {
+        return 0
+    }
+
+    if (maxDelayMs < minDelayMs) {
+        maxDelayMs := minDelayMs
+    }
+
+    return Round(Random(minDelayMs, maxDelayMs))
 }

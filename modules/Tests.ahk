@@ -28,6 +28,25 @@ RunUnitTests() {
     RunTest("Randomized delay stays within jitter range", Func("Test_GetRandomizedDelayRange"), &total, &failed, &failures)
     RunTest("Randomized delay honors minimum", Func("Test_GetRandomizedDelayMinimum"), &total, &failed, &failures)
     RunTest("Randomized click offset stays within range", Func("Test_ApplyRandomClickOffsetRange"), &total, &failed, &failures)
+    RunTest("Human mouse path ends at target", Func("Test_BuildHumanMousePathEndsAtTarget"), &total, &failed, &failures)
+    RunTest("Human mouse path uses multiple steps for long travel", Func("Test_BuildHumanMousePathUsesMultipleSteps"), &total, &failed, &failures)
+    RunTest("Human mouse path handles stationary cursor", Func("Test_BuildHumanMousePathStationary"), &total, &failed, &failures)
+    RunTest("Human mouse overshoot extends beyond target when forced", Func("Test_BuildMouseOvershootPointExtendsBeyondTarget"), &total, &failed, &failures)
+    RunTest("Human mouse path overshoot settles back on target", Func("Test_BuildHumanMousePathOvershootSettlesOnTarget"), &total, &failed, &failures)
+    RunTest("Human mouse overshoot click stays disabled by default", Func("Test_BuildHumanMousePathOvershootClickDisabledByDefault"), &total, &failed, &failures)
+    RunTest("Human mouse overshoot click marker forced", Func("Test_BuildHumanMousePathOvershootClickForced"), &total, &failed, &failures)
+    RunTest("Idle mouse wander target clamps to bounds", Func("Test_BuildIdleMouseWanderTargetClampsToBounds"), &total, &failed, &failures)
+    RunTest("Idle mouse wander distance can force near range", Func("Test_GetIdleMouseWanderDistanceNearRange"), &total, &failed, &failures)
+    RunTest("Idle mouse speed can force fast range", Func("Test_GetIdleMouseSpeedMultiplierFastRange"), &total, &failed, &failures)
+    RunTest("Safe keystrokes list is copied", Func("Test_GetSafeKeystrokesReturnsCopy"), &total, &failed, &failures)
+    RunTest("Random safe keystroke empty list returns blank", Func("Test_GetRandomSafeKeystrokeEmpty"), &total, &failed, &failures)
+    RunTest("Random safe keystroke single entry returns that key", Func("Test_GetRandomSafeKeystrokeSingleEntry"), &total, &failed, &failures)
+    RunTest("Safe key send token maps named key", Func("Test_BuildSafeKeySendTokenNamedKey"), &total, &failed, &failures)
+    RunTest("Safe key send token maps digit", Func("Test_BuildSafeKeySendTokenDigit"), &total, &failed, &failures)
+    RunTest("Safe keystroke hold duration forced range", Func("Test_GetRandomSafeKeystrokeHoldDurationForcedRange"), &total, &failed, &failures)
+    RunTest("Human long wait disabled returns zero", Func("Test_GetHumanLongWaitDurationDisabled"), &total, &failed, &failures)
+    RunTest("Human long wait pre-cycle forced range", Func("Test_GetHumanLongWaitDurationPreCycleForced"), &total, &failed, &failures)
+    RunTest("Human long wait unknown phase returns zero", Func("Test_GetHumanLongWaitDurationUnknownPhase"), &total, &failed, &failures)
 
     passed := total - failed
     summary := "Tests run: " . total . "`nPassed: " . passed . "`nFailed: " . failed
@@ -413,4 +432,341 @@ Test_ApplyRandomClickOffsetRange() {
     } finally {
         CLICK_POSITION_JITTER_PX := originalOffset
     }
+}
+
+Test_BuildHumanMousePathEndsAtTarget() {
+    loop 50 {
+        path := BuildHumanMousePath({x: 100, y: 200}, {x: 640, y: 380})
+        AssertTrue(path.points.Length > 0, "Expected at least one movement point.")
+        lastPoint := path.points[path.points.Length]
+        AssertEqual(640, lastPoint.x, "Human mouse path should end on the target X.")
+        AssertEqual(380, lastPoint.y, "Human mouse path should end on the target Y.")
+        AssertTrue(path.durationMs > 0, "Expected a positive movement duration for non-zero travel.")
+    }
+}
+
+Test_BuildHumanMousePathUsesMultipleSteps() {
+    loop 30 {
+        path := BuildHumanMousePath({x: 50, y: 50}, {x: 950, y: 650})
+        AssertTrue(path.points.Length >= 2, "Long mouse movement should use multiple points.")
+        firstPoint := path.points[1]
+        AssertTrue(firstPoint.x != 950 || firstPoint.y != 650, "Long mouse movement should not jump directly to the final point.")
+    }
+}
+
+Test_BuildHumanMousePathStationary() {
+    path := BuildHumanMousePath({x: 300, y: 400}, {x: 300, y: 400})
+    AssertEqual(0, path.steps, "Stationary cursor should not create movement steps.")
+    AssertEqual(0, path.durationMs, "Stationary cursor should not add movement duration.")
+    AssertEqual(0, path.points.Length, "Stationary cursor should not generate path points.")
+}
+
+Test_BuildMouseOvershootPointExtendsBeyondTarget() {
+    global HUMAN_MOUSE_OVERSHOOT_CHANCE, HUMAN_MOUSE_OVERSHOOT_MIN_DISTANCE
+    global HUMAN_MOUSE_OVERSHOOT_MIN_PX, HUMAN_MOUSE_OVERSHOOT_MAX_PX, HUMAN_MOUSE_OVERSHOOT_LATERAL_JITTER_PX
+
+    originalChance := HUMAN_MOUSE_OVERSHOOT_CHANCE
+    originalMinDistance := HUMAN_MOUSE_OVERSHOOT_MIN_DISTANCE
+    originalMinPx := HUMAN_MOUSE_OVERSHOOT_MIN_PX
+    originalMaxPx := HUMAN_MOUSE_OVERSHOOT_MAX_PX
+    originalLateral := HUMAN_MOUSE_OVERSHOOT_LATERAL_JITTER_PX
+
+    try {
+        HUMAN_MOUSE_OVERSHOOT_CHANCE := 1.0
+        HUMAN_MOUSE_OVERSHOOT_MIN_DISTANCE := 0
+        HUMAN_MOUSE_OVERSHOOT_MIN_PX := 10
+        HUMAN_MOUSE_OVERSHOOT_MAX_PX := 10
+        HUMAN_MOUSE_OVERSHOOT_LATERAL_JITTER_PX := 0
+
+        overshootPoint := BuildMouseOvershootPoint({x: 100, y: 100}, {x: 200, y: 100}, 100, 0, 100)
+        AssertTrue(IsObject(overshootPoint), "Expected overshoot point when overshoot is forced.")
+        AssertEqual(210, overshootPoint.x, "Overshoot point should extend beyond target along travel direction.")
+        AssertEqual(100, overshootPoint.y, "Overshoot point should stay on axis without lateral jitter.")
+    } finally {
+        HUMAN_MOUSE_OVERSHOOT_CHANCE := originalChance
+        HUMAN_MOUSE_OVERSHOOT_MIN_DISTANCE := originalMinDistance
+        HUMAN_MOUSE_OVERSHOOT_MIN_PX := originalMinPx
+        HUMAN_MOUSE_OVERSHOOT_MAX_PX := originalMaxPx
+        HUMAN_MOUSE_OVERSHOOT_LATERAL_JITTER_PX := originalLateral
+    }
+}
+
+Test_BuildHumanMousePathOvershootSettlesOnTarget() {
+    global HUMAN_MOUSE_OVERSHOOT_CHANCE, HUMAN_MOUSE_OVERSHOOT_MIN_DISTANCE
+    global HUMAN_MOUSE_OVERSHOOT_MIN_PX, HUMAN_MOUSE_OVERSHOOT_MAX_PX, HUMAN_MOUSE_OVERSHOOT_LATERAL_JITTER_PX
+
+    originalChance := HUMAN_MOUSE_OVERSHOOT_CHANCE
+    originalMinDistance := HUMAN_MOUSE_OVERSHOOT_MIN_DISTANCE
+    originalMinPx := HUMAN_MOUSE_OVERSHOOT_MIN_PX
+    originalMaxPx := HUMAN_MOUSE_OVERSHOOT_MAX_PX
+    originalLateral := HUMAN_MOUSE_OVERSHOOT_LATERAL_JITTER_PX
+
+    try {
+        HUMAN_MOUSE_OVERSHOOT_CHANCE := 1.0
+        HUMAN_MOUSE_OVERSHOOT_MIN_DISTANCE := 0
+        HUMAN_MOUSE_OVERSHOOT_MIN_PX := 12
+        HUMAN_MOUSE_OVERSHOOT_MAX_PX := 12
+        HUMAN_MOUSE_OVERSHOOT_LATERAL_JITTER_PX := 0
+
+        path := BuildHumanMousePath({x: 50, y: 50}, {x: 250, y: 50})
+        AssertTrue(path.overshootApplied, "Expected overshoot to be marked as applied when forced.")
+        AssertTrue(path.points.Length >= 3, "Overshoot path should include outbound and correction points.")
+
+        sawOvershoot := false
+        for point in path.points {
+            if (point.x > 250) {
+                sawOvershoot := true
+                break
+            }
+        }
+
+        AssertTrue(sawOvershoot, "Expected at least one point beyond the target during overshoot.")
+        lastPoint := path.points[path.points.Length]
+        AssertEqual(250, lastPoint.x, "Overshoot path should settle back onto target X.")
+        AssertEqual(50, lastPoint.y, "Overshoot path should settle back onto target Y.")
+    } finally {
+        HUMAN_MOUSE_OVERSHOOT_CHANCE := originalChance
+        HUMAN_MOUSE_OVERSHOOT_MIN_DISTANCE := originalMinDistance
+        HUMAN_MOUSE_OVERSHOOT_MIN_PX := originalMinPx
+        HUMAN_MOUSE_OVERSHOOT_MAX_PX := originalMaxPx
+        HUMAN_MOUSE_OVERSHOOT_LATERAL_JITTER_PX := originalLateral
+    }
+}
+
+Test_BuildHumanMousePathOvershootClickDisabledByDefault() {
+    global HUMAN_MOUSE_OVERSHOOT_CHANCE, HUMAN_MOUSE_OVERSHOOT_MIN_DISTANCE
+    global HUMAN_MOUSE_OVERSHOOT_MIN_PX, HUMAN_MOUSE_OVERSHOOT_MAX_PX, HUMAN_MOUSE_OVERSHOOT_LATERAL_JITTER_PX
+    global HUMAN_MOUSE_OVERSHOOT_CLICK_CHANCE
+
+    originalChance := HUMAN_MOUSE_OVERSHOOT_CHANCE
+    originalMinDistance := HUMAN_MOUSE_OVERSHOOT_MIN_DISTANCE
+    originalMinPx := HUMAN_MOUSE_OVERSHOOT_MIN_PX
+    originalMaxPx := HUMAN_MOUSE_OVERSHOOT_MAX_PX
+    originalLateral := HUMAN_MOUSE_OVERSHOOT_LATERAL_JITTER_PX
+    originalClickChance := HUMAN_MOUSE_OVERSHOOT_CLICK_CHANCE
+
+    try {
+        HUMAN_MOUSE_OVERSHOOT_CHANCE := 1.0
+        HUMAN_MOUSE_OVERSHOOT_MIN_DISTANCE := 0
+        HUMAN_MOUSE_OVERSHOOT_MIN_PX := 12
+        HUMAN_MOUSE_OVERSHOOT_MAX_PX := 12
+        HUMAN_MOUSE_OVERSHOOT_LATERAL_JITTER_PX := 0
+        HUMAN_MOUSE_OVERSHOOT_CLICK_CHANCE := 1.0
+
+        path := BuildHumanMousePath({x: 50, y: 50}, {x: 250, y: 50})
+        AssertTrue(path.overshootApplied, "Expected overshoot to be applied when forced.")
+        AssertTrue(!path.overshootClickApplied, "Overshoot click should remain disabled unless explicitly enabled by caller.")
+    } finally {
+        HUMAN_MOUSE_OVERSHOOT_CHANCE := originalChance
+        HUMAN_MOUSE_OVERSHOOT_MIN_DISTANCE := originalMinDistance
+        HUMAN_MOUSE_OVERSHOOT_MIN_PX := originalMinPx
+        HUMAN_MOUSE_OVERSHOOT_MAX_PX := originalMaxPx
+        HUMAN_MOUSE_OVERSHOOT_LATERAL_JITTER_PX := originalLateral
+        HUMAN_MOUSE_OVERSHOOT_CLICK_CHANCE := originalClickChance
+    }
+}
+
+Test_BuildHumanMousePathOvershootClickForced() {
+    global HUMAN_MOUSE_OVERSHOOT_CHANCE, HUMAN_MOUSE_OVERSHOOT_MIN_DISTANCE
+    global HUMAN_MOUSE_OVERSHOOT_MIN_PX, HUMAN_MOUSE_OVERSHOOT_MAX_PX, HUMAN_MOUSE_OVERSHOOT_LATERAL_JITTER_PX
+    global HUMAN_MOUSE_OVERSHOOT_CLICK_CHANCE, HUMAN_MOUSE_OVERSHOOT_CLICK_PAUSE_MIN_MS, HUMAN_MOUSE_OVERSHOOT_CLICK_PAUSE_MAX_MS
+
+    originalChance := HUMAN_MOUSE_OVERSHOOT_CHANCE
+    originalMinDistance := HUMAN_MOUSE_OVERSHOOT_MIN_DISTANCE
+    originalMinPx := HUMAN_MOUSE_OVERSHOOT_MIN_PX
+    originalMaxPx := HUMAN_MOUSE_OVERSHOOT_MAX_PX
+    originalLateral := HUMAN_MOUSE_OVERSHOOT_LATERAL_JITTER_PX
+    originalClickChance := HUMAN_MOUSE_OVERSHOOT_CLICK_CHANCE
+    originalClickPauseMin := HUMAN_MOUSE_OVERSHOOT_CLICK_PAUSE_MIN_MS
+    originalClickPauseMax := HUMAN_MOUSE_OVERSHOOT_CLICK_PAUSE_MAX_MS
+
+    try {
+        HUMAN_MOUSE_OVERSHOOT_CHANCE := 1.0
+        HUMAN_MOUSE_OVERSHOOT_MIN_DISTANCE := 0
+        HUMAN_MOUSE_OVERSHOOT_MIN_PX := 12
+        HUMAN_MOUSE_OVERSHOOT_MAX_PX := 12
+        HUMAN_MOUSE_OVERSHOOT_LATERAL_JITTER_PX := 0
+        HUMAN_MOUSE_OVERSHOOT_CLICK_CHANCE := 1.0
+        HUMAN_MOUSE_OVERSHOOT_CLICK_PAUSE_MIN_MS := 55
+        HUMAN_MOUSE_OVERSHOOT_CLICK_PAUSE_MAX_MS := 55
+
+        path := BuildHumanMousePath({x: 50, y: 50}, {x: 250, y: 50}, "", true)
+        AssertTrue(path.overshootApplied, "Expected overshoot to be applied when forced.")
+        AssertTrue(path.overshootClickApplied, "Expected overshoot click to be marked as applied when forced.")
+
+        clickPointIndex := 0
+        Loop path.points.Length {
+            if (path.points[A_Index].clickAfter) {
+                clickPointIndex := A_Index
+                break
+            }
+        }
+
+        AssertTrue(clickPointIndex > 0, "Expected at least one overshoot point to be marked for click.")
+        AssertTrue(clickPointIndex < path.points.Length, "Overshoot click should happen before the final settled target point.")
+        AssertEqual(55, path.points[clickPointIndex].postClickPauseMs, "Expected overshoot click pause to match forced pause duration.")
+    } finally {
+        HUMAN_MOUSE_OVERSHOOT_CHANCE := originalChance
+        HUMAN_MOUSE_OVERSHOOT_MIN_DISTANCE := originalMinDistance
+        HUMAN_MOUSE_OVERSHOOT_MIN_PX := originalMinPx
+        HUMAN_MOUSE_OVERSHOOT_MAX_PX := originalMaxPx
+        HUMAN_MOUSE_OVERSHOOT_LATERAL_JITTER_PX := originalLateral
+        HUMAN_MOUSE_OVERSHOOT_CLICK_CHANCE := originalClickChance
+        HUMAN_MOUSE_OVERSHOOT_CLICK_PAUSE_MIN_MS := originalClickPauseMin
+        HUMAN_MOUSE_OVERSHOOT_CLICK_PAUSE_MAX_MS := originalClickPauseMax
+    }
+}
+
+Test_BuildIdleMouseWanderTargetClampsToBounds() {
+    bounds := {minX: 2, minY: 2, maxX: 100, maxY: 100}
+    clampedRight := BuildIdleMouseWanderTargetFromOrigin({x: 95, y: 50}, bounds, 30, 0.0)
+    AssertEqual(100, clampedRight.x, "Idle wander target should clamp to right bound.")
+    AssertEqual(50, clampedRight.y, "Idle wander target should preserve Y when no vertical change exists.")
+
+    clampedTop := BuildIdleMouseWanderTargetFromOrigin({x: 50, y: 5}, bounds, 20, 4.71238898038469)
+    AssertEqual(50, clampedTop.x, "Idle wander target should preserve X when no horizontal change exists.")
+    AssertEqual(2, clampedTop.y, "Idle wander target should clamp to top bound.")
+}
+
+Test_GetIdleMouseWanderDistanceNearRange() {
+    global HUMAN_MOUSE_IDLE_NEAR_MOVE_CHANCE
+    global HUMAN_MOUSE_IDLE_NEAR_MIN_PX, HUMAN_MOUSE_IDLE_NEAR_MAX_PX
+
+    originalChance := HUMAN_MOUSE_IDLE_NEAR_MOVE_CHANCE
+    originalMin := HUMAN_MOUSE_IDLE_NEAR_MIN_PX
+    originalMax := HUMAN_MOUSE_IDLE_NEAR_MAX_PX
+
+    try {
+        HUMAN_MOUSE_IDLE_NEAR_MOVE_CHANCE := 1.0
+        HUMAN_MOUSE_IDLE_NEAR_MIN_PX := 11
+        HUMAN_MOUSE_IDLE_NEAR_MAX_PX := 11
+        distancePx := GetIdleMouseWanderDistance()
+        AssertEqual(11, distancePx, "Expected near idle wander distance when near range is forced.")
+    } finally {
+        HUMAN_MOUSE_IDLE_NEAR_MOVE_CHANCE := originalChance
+        HUMAN_MOUSE_IDLE_NEAR_MIN_PX := originalMin
+        HUMAN_MOUSE_IDLE_NEAR_MAX_PX := originalMax
+    }
+}
+
+Test_GetIdleMouseSpeedMultiplierFastRange() {
+    global HUMAN_MOUSE_IDLE_FAST_MOVE_CHANCE
+    global HUMAN_MOUSE_IDLE_FAST_SPEED_MIN, HUMAN_MOUSE_IDLE_FAST_SPEED_MAX
+
+    originalChance := HUMAN_MOUSE_IDLE_FAST_MOVE_CHANCE
+    originalMin := HUMAN_MOUSE_IDLE_FAST_SPEED_MIN
+    originalMax := HUMAN_MOUSE_IDLE_FAST_SPEED_MAX
+
+    try {
+        HUMAN_MOUSE_IDLE_FAST_MOVE_CHANCE := 1.0
+        HUMAN_MOUSE_IDLE_FAST_SPEED_MIN := 0.75
+        HUMAN_MOUSE_IDLE_FAST_SPEED_MAX := 0.75
+        speedMultiplier := GetIdleMouseSpeedMultiplier()
+        AssertEqual(0.75, speedMultiplier, "Expected fast idle speed multiplier when fast range is forced.")
+    } finally {
+        HUMAN_MOUSE_IDLE_FAST_MOVE_CHANCE := originalChance
+        HUMAN_MOUSE_IDLE_FAST_SPEED_MIN := originalMin
+        HUMAN_MOUSE_IDLE_FAST_SPEED_MAX := originalMax
+    }
+}
+
+Test_GetSafeKeystrokesReturnsCopy() {
+    global SAFE_KEYSTROKES
+
+    originalKeys := SAFE_KEYSTROKES
+    try {
+        SAFE_KEYSTROKES := ["{Shift}", "r"]
+        copiedKeys := GetSafeKeystrokes()
+        AssertEqual(2, copiedKeys.Length, "Expected copied safe keystroke count to match source.")
+        copiedKeys.Push("x")
+        AssertEqual(2, SAFE_KEYSTROKES.Length, "Mutating copied keystrokes should not affect config list.")
+    } finally {
+        SAFE_KEYSTROKES := originalKeys
+    }
+}
+
+Test_GetRandomSafeKeystrokeEmpty() {
+    global SAFE_KEYSTROKES
+
+    originalKeys := SAFE_KEYSTROKES
+    try {
+        SAFE_KEYSTROKES := []
+        AssertEqual("", GetRandomSafeKeystroke(), "Expected blank safe keystroke when list is empty.")
+    } finally {
+        SAFE_KEYSTROKES := originalKeys
+    }
+}
+
+Test_GetRandomSafeKeystrokeSingleEntry() {
+    global SAFE_KEYSTROKES
+
+    originalKeys := SAFE_KEYSTROKES
+    try {
+        SAFE_KEYSTROKES := ["{Left}"]
+        AssertEqual("{Left}", GetRandomSafeKeystroke(), "Expected the only configured safe keystroke to be returned.")
+    } finally {
+        SAFE_KEYSTROKES := originalKeys
+    }
+}
+
+Test_BuildSafeKeySendTokenNamedKey() {
+    AssertEqual("Left", BuildSafeKeySendToken("{Left}"), "Expected named safe key to unwrap to AHK send token.")
+}
+
+Test_BuildSafeKeySendTokenDigit() {
+    AssertEqual("vk37", BuildSafeKeySendToken("7"), "Expected digit safe key to map to virtual-key token.")
+}
+
+Test_GetRandomSafeKeystrokeHoldDurationForcedRange() {
+    global SAFE_KEYSTROKE_HOLD_MIN_MS, SAFE_KEYSTROKE_HOLD_MAX_MS
+
+    originalMin := SAFE_KEYSTROKE_HOLD_MIN_MS
+    originalMax := SAFE_KEYSTROKE_HOLD_MAX_MS
+    try {
+        SAFE_KEYSTROKE_HOLD_MIN_MS := 64
+        SAFE_KEYSTROKE_HOLD_MAX_MS := 64
+        AssertEqual(64, GetRandomSafeKeystrokeHoldDuration(), "Expected hold duration to match forced min/max range.")
+    } finally {
+        SAFE_KEYSTROKE_HOLD_MIN_MS := originalMin
+        SAFE_KEYSTROKE_HOLD_MAX_MS := originalMax
+    }
+}
+
+Test_GetHumanLongWaitDurationDisabled() {
+    global HUMAN_LONG_WAIT_ENABLED
+
+    originalEnabled := HUMAN_LONG_WAIT_ENABLED
+    try {
+        HUMAN_LONG_WAIT_ENABLED := false
+        AssertEqual(0, GetHumanLongWaitDuration("preCycleStart"), "Disabled long waits should always return zero.")
+    } finally {
+        HUMAN_LONG_WAIT_ENABLED := originalEnabled
+    }
+}
+
+Test_GetHumanLongWaitDurationPreCycleForced() {
+    global HUMAN_LONG_WAIT_ENABLED
+    global HUMAN_LONG_WAIT_PRE_CYCLE_CHANCE, HUMAN_LONG_WAIT_PRE_CYCLE_MIN_MS, HUMAN_LONG_WAIT_PRE_CYCLE_MAX_MS
+
+    originalEnabled := HUMAN_LONG_WAIT_ENABLED
+    originalChance := HUMAN_LONG_WAIT_PRE_CYCLE_CHANCE
+    originalMin := HUMAN_LONG_WAIT_PRE_CYCLE_MIN_MS
+    originalMax := HUMAN_LONG_WAIT_PRE_CYCLE_MAX_MS
+
+    try {
+        HUMAN_LONG_WAIT_ENABLED := true
+        HUMAN_LONG_WAIT_PRE_CYCLE_CHANCE := 1.0
+        HUMAN_LONG_WAIT_PRE_CYCLE_MIN_MS := 2500
+        HUMAN_LONG_WAIT_PRE_CYCLE_MAX_MS := 2500
+        AssertEqual(2500, GetHumanLongWaitDuration("preCycleStart"), "Forced pre-cycle long wait should return configured duration.")
+    } finally {
+        HUMAN_LONG_WAIT_ENABLED := originalEnabled
+        HUMAN_LONG_WAIT_PRE_CYCLE_CHANCE := originalChance
+        HUMAN_LONG_WAIT_PRE_CYCLE_MIN_MS := originalMin
+        HUMAN_LONG_WAIT_PRE_CYCLE_MAX_MS := originalMax
+    }
+}
+
+Test_GetHumanLongWaitDurationUnknownPhase() {
+    AssertEqual(0, GetHumanLongWaitDuration("not-a-real-phase"), "Unknown long wait phase should return zero.")
 }
