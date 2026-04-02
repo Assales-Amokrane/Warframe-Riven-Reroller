@@ -172,6 +172,13 @@ HandleCycleState() {
 
     LogEvent("INFO", "OldRivenRead", {count: OLD_RIVEN.count})
 
+    stopReason := GetPerfectCurrentRivenStopReason(OLD_RIVEN)
+    if (stopReason != "") {
+        LogEvent("INFO", "PerfectRivenDetected", {action: "Will stop before starting cycle", context: "old"})
+        StopRerollLoop(stopReason)
+        return
+    }
+
     MaybeApplyHumanLongWait("preCycleStart")
     if (!IS_RUNNING) {
         return
@@ -183,6 +190,14 @@ HandleCycleState() {
     }
 
     SleepRandomized(START_CYCLE_TO_CONFIRM_DELAY)
+}
+
+GetPerfectCurrentRivenStopReason(rivenData) {
+    if (IsPerfectRiven(rivenData)) {
+        return "Perfect current riven detected before cycling."
+    }
+
+    return ""
 }
 
 HandleConfirmCycleState() {

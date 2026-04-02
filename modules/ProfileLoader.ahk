@@ -25,7 +25,7 @@ TryAutoLoadLastProfile() {
 }
 
 LoadProfileFromFile(profilePath, showResultMessage := true) {
-    global ACTIVE_PROFILE, ACTIVE_RULES, REROLL_ENABLED, LAST_PROFILE_PATH, RELEASE_BUILD, Json
+    global ACTIVE_PROFILE, ACTIVE_RULES, REROLL_ENABLED, LAST_PROFILE_PATH, RELEASE_BUILD, JSON_PARSER
 
     if (!FileExist(profilePath)) {
         MsgBox("Profile file not found:`n" . profilePath, "Profile Error")
@@ -42,7 +42,7 @@ LoadProfileFromFile(profilePath, showResultMessage := true) {
     }
 
     try {
-        bundle := Json.Parse(jsonText)
+        bundle := JSON_PARSER.Parse(jsonText)
     } catch as err {
         MsgBox("Invalid JSON profile:`n" . err.Message, "Profile Error")
         LogEvent("ERROR", "ProfileLoadFailed", {reason: "InvalidJson", message: err.Message, path: profilePath})

@@ -244,6 +244,10 @@ SleepWithHumanMouseActivity(totalDelay) {
     }
 }
 
+SleepRandomized(baseDelay, minimumDelay := 0, jitterPercent := "") {
+    SleepWithHumanMouseActivity(GetRandomizedDelay(baseDelay, minimumDelay, jitterPercent))
+}
+
 MaybeSendRandomSafeKeystroke(&remainingMs, &safeKeystrokesSent) {
     global SAFE_KEYSTROKE_ENABLED, SAFE_KEYSTROKE_PRESS_CHANCE, SAFE_KEYSTROKE_MAX_PRESSES_PER_SLEEP
     global SAFE_KEYSTROKE_HOLD_MIN_MS, SAFE_KEYSTROKE_POST_PRESS_MIN_MS, SAFE_KEYSTROKE_POST_PRESS_MAX_MS

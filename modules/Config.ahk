@@ -58,7 +58,7 @@ global SAFE_KEYSTROKE_POST_PRESS_MAX_MS := 120
 global SAFE_KEYSTROKES := [
     "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
     "``", "-", "=", "[", "]", "\", ";", "'", ",", ".", "/",
-    "{Shift}", "{Ctrl}", "{Alt}", "{CapsLock}",
+    "{Shift}", "{Ctrl}", "{Alt}",
     "{Up}", "{Down}", "{Left}", "{Right}"
 ]
 global HUMAN_LONG_WAIT_ENABLED := true
@@ -242,7 +242,7 @@ GetAllAttributeLabels() {
 InitializeCoordinateProfile() {
     global BASE_RESOLUTION, BASE_ACTION_COORDS, BASE_STATE_AREAS
     global ACTION_COORDS, STATE_AREAS, SCALE_X, SCALE_Y, COORD_OFFSET_X, COORD_OFFSET_Y, COORDINATE_PROFILE_FILE, RELEASE_BUILD
-    global Json
+    global JSON_PARSER
 
     SCALE_X := A_ScreenWidth / BASE_RESOLUTION.w
     SCALE_Y := A_ScreenHeight / BASE_RESOLUTION.h
@@ -256,7 +256,7 @@ InitializeCoordinateProfile() {
     if (!RELEASE_BUILD && FileExist(COORDINATE_PROFILE_FILE)) {
         try {
             profileRaw := FileRead(COORDINATE_PROFILE_FILE, "UTF-8")
-            profile := Json.Parse(profileRaw)
+            profile := JSON_PARSER.Parse(profileRaw)
             ApplyCoordinateProfile(profile)
         } catch as err {
             ; Do not block startup if local profile is invalid.
@@ -355,10 +355,6 @@ GetRandomizedDelay(baseDelay, minimumDelay := 0, jitterPercent := "") {
     }
 
     return Max(adjustedDelay, minimumDelay)
-}
-
-SleepRandomized(baseDelay, minimumDelay := 0, jitterPercent := "") {
-    SleepWithHumanMouseActivity(GetRandomizedDelay(baseDelay, minimumDelay, jitterPercent))
 }
 
 ApplyRandomClickOffset(basePoint, maxOffset := "") {

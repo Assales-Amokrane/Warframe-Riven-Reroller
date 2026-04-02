@@ -1,70 +1,210 @@
 ; ===== UNIT TESTS =====
 RunUnitTests() {
+    results := CollectUnitTestResults()
+    summary := FormatUnitTestSummary(results)
+
+    LogEvent("INFO", "UnitTestsCompleted", {total: results.total, passed: results.passed, failed: results.failed})
+    MsgBox(summary, "Riven Reroller Tests")
+}
+
+RunUnitTestsHeadless(outputPath := "") {
+    results := CollectUnitTestResults()
+    summary := FormatUnitTestSummary(results)
+
+    if (outputPath != "") {
+        try {
+            FileDelete(outputPath)
+        }
+        try {
+            FileAppend(summary, outputPath, "UTF-8")
+        }
+    }
+
+    LogEvent("INFO", "UnitTestsCompleted", {total: results.total, passed: results.passed, failed: results.failed})
+    return results
+}
+
+CollectUnitTestResults() {
     total := 0
     failed := 0
     failures := []
 
-    RunTest("ParseAttributeLine exact mapping", Func("Test_ParseAttributeLineExact"), &total, &failed, &failures)
-    RunTest("ParseAttributeLine OCR shorthand mapping", Func("Test_ParseAttributeLineShorthand"), &total, &failed, &failures)
-    RunTest("ParseAttributeLine icon noise mapping", Func("Test_ParseAttributeLineIconNoise"), &total, &failed, &failures)
-    RunTest("ParseAttributeLine percent display", Func("Test_ParseAttributeLinePercentDisplay"), &total, &failed, &failures)
-    RunTest("ParseAttributeLine multiplier polarity/mapping", Func("Test_ParseAttributeLineMultiplierPolarity"), &total, &failed, &failures)
-    RunTest("ParseAttributeLine spaced multiplier decimal", Func("Test_ParseAttributeLineSpacedMultiplierDecimal"), &total, &failed, &failures)
-    RunTest("EvaluateCandidate mandatory/desired", Func("Test_EvaluateCandidateMandatoryDesired"), &total, &failed, &failures)
-    RunTest("EvaluateCandidate desired negative allow-list", Func("Test_EvaluateCandidateDesiredNegativeAllowList"), &total, &failed, &failures)
-    RunTest("EvaluateCandidate undesired positive rejects third positive", Func("Test_EvaluateCandidateUndesiredPositiveReject"), &total, &failed, &failures)
-    RunTest("EvaluateCandidate undesired positive keeps two positives", Func("Test_EvaluateCandidateUndesiredPositiveKeep"), &total, &failed, &failures)
-    RunTest("EvaluateCandidate undesired negative rejects any negative", Func("Test_EvaluateCandidateUndesiredNegativeReject"), &total, &failed, &failures)
-    RunTest("CompareCandidates desired priority", Func("Test_CompareCandidatesDesiredPriority"), &total, &failed, &failures)
-    RunTest("CompareCandidates rejected fallback prefers more mandatory", Func("Test_CompareCandidatesRejectedFallback"), &total, &failed, &failures)
-    RunTest("EvaluateCandidate invalid counts reject", Func("Test_EvaluateCandidateInvalidCount"), &total, &failed, &failures)
-    RunTest("ValidateRuleSlot allows empty undesired", Func("Test_ValidateRuleSlotAllowsEmptyUndesired"), &total, &failed, &failures)
-    RunTest("NormalizeRuleSlot clears undesired attributes", Func("Test_NormalizeRuleSlotClearsUndesiredAttributes"), &total, &failed, &failures)
-    RunTest("ValidateConfigBundle rejects undesired required positive slot", Func("Test_ValidateConfigBundleRejectsUndesiredRequiredPositive"), &total, &failed, &failures)
-    RunTest("TryParseMaxCyclesValue valid", Func("Test_TryParseMaxCyclesValueValid"), &total, &failed, &failures)
-    RunTest("TryParseMaxCyclesValue invalid zero", Func("Test_TryParseMaxCyclesValueInvalidZero"), &total, &failed, &failures)
-    RunTest("ValidateRuleSlot rejects unknown attr id", Func("Test_ValidateRuleSlotRejectsUnknownAttrId"), &total, &failed, &failures)
-    RunTest("State text classification", Func("Test_StateClassification"), &total, &failed, &failures)
-    RunTest("Randomized delay stays within jitter range", Func("Test_GetRandomizedDelayRange"), &total, &failed, &failures)
-    RunTest("Randomized delay honors minimum", Func("Test_GetRandomizedDelayMinimum"), &total, &failed, &failures)
-    RunTest("Randomized click offset stays within range", Func("Test_ApplyRandomClickOffsetRange"), &total, &failed, &failures)
-    RunTest("Human mouse path ends at target", Func("Test_BuildHumanMousePathEndsAtTarget"), &total, &failed, &failures)
-    RunTest("Human mouse path uses multiple steps for long travel", Func("Test_BuildHumanMousePathUsesMultipleSteps"), &total, &failed, &failures)
-    RunTest("Human mouse path handles stationary cursor", Func("Test_BuildHumanMousePathStationary"), &total, &failed, &failures)
-    RunTest("Human mouse overshoot extends beyond target when forced", Func("Test_BuildMouseOvershootPointExtendsBeyondTarget"), &total, &failed, &failures)
-    RunTest("Human mouse path overshoot settles back on target", Func("Test_BuildHumanMousePathOvershootSettlesOnTarget"), &total, &failed, &failures)
-    RunTest("Human mouse overshoot click stays disabled by default", Func("Test_BuildHumanMousePathOvershootClickDisabledByDefault"), &total, &failed, &failures)
-    RunTest("Human mouse overshoot click marker forced", Func("Test_BuildHumanMousePathOvershootClickForced"), &total, &failed, &failures)
-    RunTest("Idle mouse wander target clamps to bounds", Func("Test_BuildIdleMouseWanderTargetClampsToBounds"), &total, &failed, &failures)
-    RunTest("Idle mouse wander distance can force near range", Func("Test_GetIdleMouseWanderDistanceNearRange"), &total, &failed, &failures)
-    RunTest("Idle mouse speed can force fast range", Func("Test_GetIdleMouseSpeedMultiplierFastRange"), &total, &failed, &failures)
-    RunTest("Safe keystrokes list is copied", Func("Test_GetSafeKeystrokesReturnsCopy"), &total, &failed, &failures)
-    RunTest("Random safe keystroke empty list returns blank", Func("Test_GetRandomSafeKeystrokeEmpty"), &total, &failed, &failures)
-    RunTest("Random safe keystroke single entry returns that key", Func("Test_GetRandomSafeKeystrokeSingleEntry"), &total, &failed, &failures)
-    RunTest("Safe key send token maps named key", Func("Test_BuildSafeKeySendTokenNamedKey"), &total, &failed, &failures)
-    RunTest("Safe key send token maps digit", Func("Test_BuildSafeKeySendTokenDigit"), &total, &failed, &failures)
-    RunTest("Safe keystroke hold duration forced range", Func("Test_GetRandomSafeKeystrokeHoldDurationForcedRange"), &total, &failed, &failures)
-    RunTest("Human long wait disabled returns zero", Func("Test_GetHumanLongWaitDurationDisabled"), &total, &failed, &failures)
-    RunTest("Human long wait pre-cycle forced range", Func("Test_GetHumanLongWaitDurationPreCycleForced"), &total, &failed, &failures)
-    RunTest("Human long wait unknown phase returns zero", Func("Test_GetHumanLongWaitDurationUnknownPhase"), &total, &failed, &failures)
-
-    passed := total - failed
-    summary := "Tests run: " . total . "`nPassed: " . passed . "`nFailed: " . failed
-    if (failed > 0) {
-        summary .= "`n`nFailures:`n" . JoinArray(failures, "`n")
+    for testSpec in BuildUnitTestSuite() {
+        RunTest(testSpec[1], testSpec[2], &total, &failed, &failures)
     }
 
-    LogEvent("INFO", "UnitTestsCompleted", {total: total, passed: passed, failed: failed})
-    MsgBox(summary, "Riven Reroller Tests")
+    return {
+        total: total,
+        passed: total - failed,
+        failed: failed,
+        failures: failures
+    }
+}
+
+BuildUnitTestSuite() {
+    tests := []
+
+    tests.Push(["ParseAttributeLine exact mapping", "Test_ParseAttributeLineExact"])
+    tests.Push(["ParseAttributeLine OCR shorthand mapping", "Test_ParseAttributeLineShorthand"])
+    tests.Push(["ParseAttributeLine icon noise mapping", "Test_ParseAttributeLineIconNoise"])
+    tests.Push(["ParseAttributeLine percent display", "Test_ParseAttributeLinePercentDisplay"])
+    tests.Push(["ParseAttributeLine multiplier polarity/mapping", "Test_ParseAttributeLineMultiplierPolarity"])
+    tests.Push(["ParseAttributeLine spaced multiplier decimal", "Test_ParseAttributeLineSpacedMultiplierDecimal"])
+    tests.Push(["EvaluateCandidate mandatory/desired", "Test_EvaluateCandidateMandatoryDesired"])
+    tests.Push(["EvaluateCandidate desired negative allow-list", "Test_EvaluateCandidateDesiredNegativeAllowList"])
+    tests.Push(["EvaluateCandidate undesired positive rejects third positive", "Test_EvaluateCandidateUndesiredPositiveReject"])
+    tests.Push(["EvaluateCandidate undesired positive keeps two positives", "Test_EvaluateCandidateUndesiredPositiveKeep"])
+    tests.Push(["EvaluateCandidate undesired negative rejects any negative", "Test_EvaluateCandidateUndesiredNegativeReject"])
+    tests.Push(["CompareCandidates desired priority", "Test_CompareCandidatesDesiredPriority"])
+    tests.Push(["CompareCandidates rejected fallback prefers more mandatory", "Test_CompareCandidatesRejectedFallback"])
+    tests.Push(["Perfect current riven stop reason returned", "Test_GetPerfectCurrentRivenStopReasonPerfect"])
+    tests.Push(["EvaluateCandidate invalid counts reject", "Test_EvaluateCandidateInvalidCount"])
+    tests.Push(["ValidateRuleSlot allows empty undesired", "Test_ValidateRuleSlotAllowsEmptyUndesired"])
+    tests.Push(["NormalizeRuleSlot clears undesired attributes", "Test_NormalizeRuleSlotClearsUndesiredAttributes"])
+    tests.Push(["ValidateConfigBundle rejects undesired required positive slot", "Test_ValidateConfigBundleRejectsUndesiredRequiredPositive"])
+    tests.Push(["TryParseMaxCyclesValue valid", "Test_TryParseMaxCyclesValueValid"])
+    tests.Push(["TryParseMaxCyclesValue invalid zero", "Test_TryParseMaxCyclesValueInvalidZero"])
+    tests.Push(["ValidateRuleSlot rejects unknown attr id", "Test_ValidateRuleSlotRejectsUnknownAttrId"])
+    tests.Push(["State text classification", "Test_StateClassification"])
+    tests.Push(["Randomized delay stays within jitter range", "Test_GetRandomizedDelayRange"])
+    tests.Push(["Randomized delay honors minimum", "Test_GetRandomizedDelayMinimum"])
+    tests.Push(["Randomized click offset stays within range", "Test_ApplyRandomClickOffsetRange"])
+    tests.Push(["Human mouse path ends at target", "Test_BuildHumanMousePathEndsAtTarget"])
+    tests.Push(["Human mouse path uses multiple steps for long travel", "Test_BuildHumanMousePathUsesMultipleSteps"])
+    tests.Push(["Human mouse path handles stationary cursor", "Test_BuildHumanMousePathStationary"])
+    tests.Push(["Human mouse overshoot extends beyond target when forced", "Test_BuildMouseOvershootPointExtendsBeyondTarget"])
+    tests.Push(["Human mouse path overshoot settles back on target", "Test_BuildHumanMousePathOvershootSettlesOnTarget"])
+    tests.Push(["Human mouse overshoot click stays disabled by default", "Test_BuildHumanMousePathOvershootClickDisabledByDefault"])
+    tests.Push(["Human mouse overshoot click marker forced", "Test_BuildHumanMousePathOvershootClickForced"])
+    tests.Push(["Idle mouse wander target clamps to bounds", "Test_BuildIdleMouseWanderTargetClampsToBounds"])
+    tests.Push(["Idle mouse wander distance can force near range", "Test_GetIdleMouseWanderDistanceNearRange"])
+    tests.Push(["Idle mouse speed can force fast range", "Test_GetIdleMouseSpeedMultiplierFastRange"])
+    tests.Push(["Default safe keystrokes exclude CapsLock", "Test_DefaultSafeKeystrokesExcludeCapsLock"])
+    tests.Push(["Safe keystrokes list is copied", "Test_GetSafeKeystrokesReturnsCopy"])
+    tests.Push(["Random safe keystroke empty list returns blank", "Test_GetRandomSafeKeystrokeEmpty"])
+    tests.Push(["Random safe keystroke single entry returns that key", "Test_GetRandomSafeKeystrokeSingleEntry"])
+    tests.Push(["Safe key send token maps named key", "Test_BuildSafeKeySendTokenNamedKey"])
+    tests.Push(["Safe key send token maps digit", "Test_BuildSafeKeySendTokenDigit"])
+    tests.Push(["Safe keystroke hold duration forced range", "Test_GetRandomSafeKeystrokeHoldDurationForcedRange"])
+    tests.Push(["Human long wait disabled returns zero", "Test_GetHumanLongWaitDurationDisabled"])
+    tests.Push(["Human long wait pre-cycle forced range", "Test_GetHumanLongWaitDurationPreCycleForced"])
+    tests.Push(["Human long wait unknown phase returns zero", "Test_GetHumanLongWaitDurationUnknownPhase"])
+
+    return tests
+}
+
+FormatUnitTestSummary(results) {
+    summary := "Tests run: " . results.total . "`nPassed: " . results.passed . "`nFailed: " . results.failed
+    if (results.failed > 0) {
+        summary .= "`n`nFailures:`n" . JoinArray(results.failures, "`n")
+    }
+    return summary
 }
 
 RunTest(name, testFunc, &total, &failed, &failures) {
     total++
     try {
-        testFunc.Call()
+        CallUnitTestByName(testFunc)
     } catch as err {
         failed++
         failures.Push(name . ": " . err.Message)
+    }
+}
+
+CallUnitTestByName(testName) {
+    switch testName {
+        case "Test_ParseAttributeLineExact":
+            Test_ParseAttributeLineExact()
+        case "Test_ParseAttributeLineShorthand":
+            Test_ParseAttributeLineShorthand()
+        case "Test_ParseAttributeLineIconNoise":
+            Test_ParseAttributeLineIconNoise()
+        case "Test_ParseAttributeLinePercentDisplay":
+            Test_ParseAttributeLinePercentDisplay()
+        case "Test_ParseAttributeLineMultiplierPolarity":
+            Test_ParseAttributeLineMultiplierPolarity()
+        case "Test_ParseAttributeLineSpacedMultiplierDecimal":
+            Test_ParseAttributeLineSpacedMultiplierDecimal()
+        case "Test_EvaluateCandidateMandatoryDesired":
+            Test_EvaluateCandidateMandatoryDesired()
+        case "Test_EvaluateCandidateDesiredNegativeAllowList":
+            Test_EvaluateCandidateDesiredNegativeAllowList()
+        case "Test_EvaluateCandidateUndesiredPositiveReject":
+            Test_EvaluateCandidateUndesiredPositiveReject()
+        case "Test_EvaluateCandidateUndesiredPositiveKeep":
+            Test_EvaluateCandidateUndesiredPositiveKeep()
+        case "Test_EvaluateCandidateUndesiredNegativeReject":
+            Test_EvaluateCandidateUndesiredNegativeReject()
+        case "Test_CompareCandidatesDesiredPriority":
+            Test_CompareCandidatesDesiredPriority()
+        case "Test_CompareCandidatesRejectedFallback":
+            Test_CompareCandidatesRejectedFallback()
+        case "Test_GetPerfectCurrentRivenStopReasonPerfect":
+            Test_GetPerfectCurrentRivenStopReasonPerfect()
+        case "Test_EvaluateCandidateInvalidCount":
+            Test_EvaluateCandidateInvalidCount()
+        case "Test_ValidateRuleSlotAllowsEmptyUndesired":
+            Test_ValidateRuleSlotAllowsEmptyUndesired()
+        case "Test_NormalizeRuleSlotClearsUndesiredAttributes":
+            Test_NormalizeRuleSlotClearsUndesiredAttributes()
+        case "Test_ValidateConfigBundleRejectsUndesiredRequiredPositive":
+            Test_ValidateConfigBundleRejectsUndesiredRequiredPositive()
+        case "Test_TryParseMaxCyclesValueValid":
+            Test_TryParseMaxCyclesValueValid()
+        case "Test_TryParseMaxCyclesValueInvalidZero":
+            Test_TryParseMaxCyclesValueInvalidZero()
+        case "Test_ValidateRuleSlotRejectsUnknownAttrId":
+            Test_ValidateRuleSlotRejectsUnknownAttrId()
+        case "Test_StateClassification":
+            Test_StateClassification()
+        case "Test_GetRandomizedDelayRange":
+            Test_GetRandomizedDelayRange()
+        case "Test_GetRandomizedDelayMinimum":
+            Test_GetRandomizedDelayMinimum()
+        case "Test_ApplyRandomClickOffsetRange":
+            Test_ApplyRandomClickOffsetRange()
+        case "Test_BuildHumanMousePathEndsAtTarget":
+            Test_BuildHumanMousePathEndsAtTarget()
+        case "Test_BuildHumanMousePathUsesMultipleSteps":
+            Test_BuildHumanMousePathUsesMultipleSteps()
+        case "Test_BuildHumanMousePathStationary":
+            Test_BuildHumanMousePathStationary()
+        case "Test_BuildMouseOvershootPointExtendsBeyondTarget":
+            Test_BuildMouseOvershootPointExtendsBeyondTarget()
+        case "Test_BuildHumanMousePathOvershootSettlesOnTarget":
+            Test_BuildHumanMousePathOvershootSettlesOnTarget()
+        case "Test_BuildHumanMousePathOvershootClickDisabledByDefault":
+            Test_BuildHumanMousePathOvershootClickDisabledByDefault()
+        case "Test_BuildHumanMousePathOvershootClickForced":
+            Test_BuildHumanMousePathOvershootClickForced()
+        case "Test_BuildIdleMouseWanderTargetClampsToBounds":
+            Test_BuildIdleMouseWanderTargetClampsToBounds()
+        case "Test_GetIdleMouseWanderDistanceNearRange":
+            Test_GetIdleMouseWanderDistanceNearRange()
+        case "Test_GetIdleMouseSpeedMultiplierFastRange":
+            Test_GetIdleMouseSpeedMultiplierFastRange()
+        case "Test_DefaultSafeKeystrokesExcludeCapsLock":
+            Test_DefaultSafeKeystrokesExcludeCapsLock()
+        case "Test_GetSafeKeystrokesReturnsCopy":
+            Test_GetSafeKeystrokesReturnsCopy()
+        case "Test_GetRandomSafeKeystrokeEmpty":
+            Test_GetRandomSafeKeystrokeEmpty()
+        case "Test_GetRandomSafeKeystrokeSingleEntry":
+            Test_GetRandomSafeKeystrokeSingleEntry()
+        case "Test_BuildSafeKeySendTokenNamedKey":
+            Test_BuildSafeKeySendTokenNamedKey()
+        case "Test_BuildSafeKeySendTokenDigit":
+            Test_BuildSafeKeySendTokenDigit()
+        case "Test_GetRandomSafeKeystrokeHoldDurationForcedRange":
+            Test_GetRandomSafeKeystrokeHoldDurationForcedRange()
+        case "Test_GetHumanLongWaitDurationDisabled":
+            Test_GetHumanLongWaitDurationDisabled()
+        case "Test_GetHumanLongWaitDurationPreCycleForced":
+            Test_GetHumanLongWaitDurationPreCycleForced()
+        case "Test_GetHumanLongWaitDurationUnknownPhase":
+            Test_GetHumanLongWaitDurationUnknownPhase()
+        default:
+            throw Error("Unknown unit test: " . testName)
     }
 }
 
@@ -297,6 +437,38 @@ Test_CompareCandidatesRejectedFallback() {
 
     winner := CompareCandidates(rules, currentCandidate, incomingCandidate)
     AssertEqual("incoming", winner)
+}
+
+Test_GetPerfectCurrentRivenStopReasonPerfect() {
+    global ACTIVE_RULES
+
+    originalRules := ACTIVE_RULES
+    try {
+        ACTIVE_RULES := {
+            positiveSlots: [
+                {mode: "mandatory", attrIds: ["critical-chance"]},
+                {mode: "mandatory", attrIds: ["critical-damage"]},
+                {mode: "desired", attrIds: ["multishot"]}
+            ],
+            negativeSlot: {mode: "undesired", attrIds: []}
+        }
+
+        rivenData := {
+            attributes: [
+                {attrId: "critical-chance", polarity: "positive"},
+                {attrId: "critical-damage", polarity: "positive"},
+                {attrId: "multishot", polarity: "positive"}
+            ]
+        }
+
+        AssertEqual(
+            "Perfect current riven detected before cycling.",
+            GetPerfectCurrentRivenStopReason(rivenData),
+            "Expected a stop reason when the current riven is already perfect."
+        )
+    } finally {
+        ACTIVE_RULES := originalRules
+    }
 }
 
 Test_EvaluateCandidateInvalidCount() {
@@ -668,6 +840,11 @@ Test_GetIdleMouseSpeedMultiplierFastRange() {
         HUMAN_MOUSE_IDLE_FAST_SPEED_MIN := originalMin
         HUMAN_MOUSE_IDLE_FAST_SPEED_MAX := originalMax
     }
+}
+
+Test_DefaultSafeKeystrokesExcludeCapsLock() {
+    keys := GetSafeKeystrokes()
+    AssertTrue(!ArrayContains(keys, "{CapsLock}"), "Default safe keystroke list should not include CapsLock.")
 }
 
 Test_GetSafeKeystrokesReturnsCopy() {

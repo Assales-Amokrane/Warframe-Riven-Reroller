@@ -191,3 +191,5 @@ class Json {
         }
     }
 }
+
+global JSON_PARSER := Json
