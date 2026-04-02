@@ -52,14 +52,19 @@ BuildUnitTestSuite() {
     tests.Push(["ParseAttributeLine spaced multiplier decimal", "Test_ParseAttributeLineSpacedMultiplierDecimal"])
     tests.Push(["EvaluateCandidate mandatory/desired", "Test_EvaluateCandidateMandatoryDesired"])
     tests.Push(["EvaluateCandidate desired negative allow-list", "Test_EvaluateCandidateDesiredNegativeAllowList"])
+    tests.Push(["EvaluateCandidate indifferent positive slot allows empty attrs", "Test_EvaluateCandidateIndifferentPositiveSlotAllowsEmptyAttrs"])
     tests.Push(["EvaluateCandidate undesired positive rejects third positive", "Test_EvaluateCandidateUndesiredPositiveReject"])
     tests.Push(["EvaluateCandidate undesired positive keeps two positives", "Test_EvaluateCandidateUndesiredPositiveKeep"])
     tests.Push(["EvaluateCandidate undesired negative rejects any negative", "Test_EvaluateCandidateUndesiredNegativeReject"])
     tests.Push(["CompareCandidates desired priority", "Test_CompareCandidatesDesiredPriority"])
+    tests.Push(["ShouldPreferIncomingResult prioritizes mandatory", "Test_ShouldPreferIncomingResultMandatoryPriority"])
     tests.Push(["CompareCandidates rejected fallback prefers more mandatory", "Test_CompareCandidatesRejectedFallback"])
     tests.Push(["Perfect current riven stop reason returned", "Test_GetPerfectCurrentRivenStopReasonPerfect"])
+    tests.Push(["Perfect current riven allows desired negative to be absent", "Test_GetPerfectCurrentRivenStopReasonDesiredNegativeAbsent"])
     tests.Push(["EvaluateCandidate invalid counts reject", "Test_EvaluateCandidateInvalidCount"])
     tests.Push(["ValidateRuleSlot allows empty undesired", "Test_ValidateRuleSlotAllowsEmptyUndesired"])
+    tests.Push(["ValidateRuleSlot ignores indifferent attributes", "Test_ValidateRuleSlotIgnoresIndifferentAttributes"])
+    tests.Push(["NormalizeRuleSlot clears indifferent attributes", "Test_NormalizeRuleSlotClearsIndifferentAttributes"])
     tests.Push(["NormalizeRuleSlot clears undesired attributes", "Test_NormalizeRuleSlotClearsUndesiredAttributes"])
     tests.Push(["ValidateConfigBundle rejects undesired required positive slot", "Test_ValidateConfigBundleRejectsUndesiredRequiredPositive"])
     tests.Push(["TryParseMaxCyclesValue valid", "Test_TryParseMaxCyclesValueValid"])
@@ -129,6 +134,8 @@ CallUnitTestByName(testName) {
             Test_EvaluateCandidateMandatoryDesired()
         case "Test_EvaluateCandidateDesiredNegativeAllowList":
             Test_EvaluateCandidateDesiredNegativeAllowList()
+        case "Test_EvaluateCandidateIndifferentPositiveSlotAllowsEmptyAttrs":
+            Test_EvaluateCandidateIndifferentPositiveSlotAllowsEmptyAttrs()
         case "Test_EvaluateCandidateUndesiredPositiveReject":
             Test_EvaluateCandidateUndesiredPositiveReject()
         case "Test_EvaluateCandidateUndesiredPositiveKeep":
@@ -137,14 +144,22 @@ CallUnitTestByName(testName) {
             Test_EvaluateCandidateUndesiredNegativeReject()
         case "Test_CompareCandidatesDesiredPriority":
             Test_CompareCandidatesDesiredPriority()
+        case "Test_ShouldPreferIncomingResultMandatoryPriority":
+            Test_ShouldPreferIncomingResultMandatoryPriority()
         case "Test_CompareCandidatesRejectedFallback":
             Test_CompareCandidatesRejectedFallback()
         case "Test_GetPerfectCurrentRivenStopReasonPerfect":
             Test_GetPerfectCurrentRivenStopReasonPerfect()
+        case "Test_GetPerfectCurrentRivenStopReasonDesiredNegativeAbsent":
+            Test_GetPerfectCurrentRivenStopReasonDesiredNegativeAbsent()
         case "Test_EvaluateCandidateInvalidCount":
             Test_EvaluateCandidateInvalidCount()
         case "Test_ValidateRuleSlotAllowsEmptyUndesired":
             Test_ValidateRuleSlotAllowsEmptyUndesired()
+        case "Test_ValidateRuleSlotIgnoresIndifferentAttributes":
+            Test_ValidateRuleSlotIgnoresIndifferentAttributes()
+        case "Test_NormalizeRuleSlotClearsIndifferentAttributes":
+            Test_NormalizeRuleSlotClearsIndifferentAttributes()
         case "Test_NormalizeRuleSlotClearsUndesiredAttributes":
             Test_NormalizeRuleSlotClearsUndesiredAttributes()
         case "Test_ValidateConfigBundleRejectsUndesiredRequiredPositive":
@@ -315,6 +330,29 @@ Test_EvaluateCandidateDesiredNegativeAllowList() {
     AssertEqual(2, result.mandatoryMatches)
 }
 
+Test_EvaluateCandidateIndifferentPositiveSlotAllowsEmptyAttrs() {
+    rules := {
+        positiveSlots: [
+            {mode: "indifferent", attrIds: []},
+            {mode: "mandatory", attrIds: ["critical-damage"]},
+            {mode: "desired", attrIds: ["multishot"]}
+        ],
+        negativeSlot: {mode: "indifferent", attrIds: []}
+    }
+
+    candidate := {
+        attributes: [
+            {attrId: "critical-damage", polarity: "positive"},
+            {attrId: "damage", polarity: "positive"}
+        ]
+    }
+
+    result := EvaluateCandidate(rules, candidate)
+    AssertEqual("KEEP", result.status)
+    AssertEqual(1, result.mandatoryMatches)
+    AssertEqual(0, result.desiredMatches)
+}
+
 Test_EvaluateCandidateUndesiredPositiveReject() {
     rules := {
         positiveSlots: [
@@ -412,6 +450,20 @@ Test_CompareCandidatesDesiredPriority() {
     AssertEqual("incoming", winner)
 }
 
+Test_ShouldPreferIncomingResultMandatoryPriority() {
+    currentResult := {mandatoryMatches: 1, desiredMatches: 2}
+    incomingResult := {mandatoryMatches: 2, desiredMatches: 0}
+
+    AssertTrue(
+        ShouldPreferIncomingResult(currentResult, incomingResult),
+        "Higher mandatory matches should win before desired matches are compared."
+    )
+    AssertTrue(
+        !ShouldPreferIncomingResult(incomingResult, currentResult),
+        "Lower mandatory matches should not beat a higher mandatory result even with more desired matches."
+    )
+}
+
 Test_CompareCandidatesRejectedFallback() {
     rules := {
         positiveSlots: [
@@ -471,6 +523,37 @@ Test_GetPerfectCurrentRivenStopReasonPerfect() {
     }
 }
 
+Test_GetPerfectCurrentRivenStopReasonDesiredNegativeAbsent() {
+    global ACTIVE_RULES
+
+    originalRules := ACTIVE_RULES
+    try {
+        ACTIVE_RULES := {
+            positiveSlots: [
+                {mode: "mandatory", attrIds: ["critical-chance"]},
+                {mode: "mandatory", attrIds: ["critical-damage"]},
+                {mode: "indifferent", attrIds: []}
+            ],
+            negativeSlot: {mode: "desired", attrIds: ["zoom"]}
+        }
+
+        rivenData := {
+            attributes: [
+                {attrId: "critical-chance", polarity: "positive"},
+                {attrId: "critical-damage", polarity: "positive"}
+            ]
+        }
+
+        AssertEqual(
+            "Perfect current riven detected before cycling.",
+            GetPerfectCurrentRivenStopReason(rivenData),
+            "A desired negative should not block a perfect result when the Riven has no negative attribute."
+        )
+    } finally {
+        ACTIVE_RULES := originalRules
+    }
+}
+
 Test_EvaluateCandidateInvalidCount() {
     rules := {
         positiveSlots: [
@@ -489,6 +572,16 @@ Test_EvaluateCandidateInvalidCount() {
 Test_ValidateRuleSlotAllowsEmptyUndesired() {
     validation := ValidateRuleSlot({mode: "undesired", attrIds: []}, "slot")
     AssertTrue(validation.ok, "ValidateRuleSlot should allow empty attrIds for undesired mode.")
+}
+
+Test_ValidateRuleSlotIgnoresIndifferentAttributes() {
+    validation := ValidateRuleSlot({mode: "indifferent", attrIds: ["not-a-real-attr-id"]}, "slot")
+    AssertTrue(validation.ok, "ValidateRuleSlot should ignore attrIds for indifferent mode.")
+}
+
+Test_NormalizeRuleSlotClearsIndifferentAttributes() {
+    normalized := NormalizeRuleSlot({mode: "indifferent", attrIds: ["zoom"]})
+    AssertEqual(0, normalized.attrIds.Length, "NormalizeRuleSlot should clear indifferent attrIds.")
 }
 
 Test_NormalizeRuleSlotClearsUndesiredAttributes() {

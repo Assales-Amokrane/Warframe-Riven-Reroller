@@ -177,6 +177,9 @@ ValidateRuleSlot(slot, path) {
     if ((slot.mode = "mandatory" || slot.mode = "desired") && slot.attrIds.Length = 0) {
         return {ok: false, message: path . ".attrIds must not be empty for mode: " . slot.mode}
     }
+    if (slot.mode = "indifferent" || slot.mode = "undesired") {
+        return {ok: true, message: ""}
+    }
 
     for index, attrId in slot.attrIds {
         if (Type(attrId) != "String" || Trim(attrId) = "") {
@@ -203,7 +206,7 @@ NormalizeRuleSet(rules) {
 }
 
 NormalizeRuleSlot(slot) {
-    if (slot.mode = "undesired") {
+    if (slot.mode = "indifferent" || slot.mode = "undesired") {
         return {
             mode: slot.mode,
             attrIds: []

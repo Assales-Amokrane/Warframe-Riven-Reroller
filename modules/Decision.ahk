@@ -20,9 +20,6 @@ EvaluateCandidate(rules, candidate) {
         return RejectCandidate(reasons, 0)
     }
 
-    if (rules.positiveSlots[1].attrIds.Length = 0 || rules.positiveSlots[2].attrIds.Length = 0) { ; this should never happen
-        return RejectCandidate(["Rule configuration is invalid: Positive Slot 1 and Positive Slot 2 must contain attributes."])
-    }
     if (rules.positiveSlots[1].mode = "undesired" || rules.positiveSlots[2].mode = "undesired") {
         return RejectCandidate(["Rule configuration is invalid: Positive Slot 1 and Positive Slot 2 cannot use undesired mode."])
     }
@@ -227,14 +224,14 @@ CompareCandidates(rules, currentCandidate, incomingCandidate) {
 }
 
 ShouldPreferIncomingResult(currentResult, incomingResult) {
-    if (incomingResult.desiredMatches > currentResult.desiredMatches) {
+    if (incomingResult.mandatoryMatches > currentResult.mandatoryMatches) {
         return true
     }
-    if (currentResult.desiredMatches > incomingResult.desiredMatches) {
+    if (currentResult.mandatoryMatches > incomingResult.mandatoryMatches) {
         return false
     }
 
-    return incomingResult.mandatoryMatches > currentResult.mandatoryMatches
+    return incomingResult.desiredMatches > currentResult.desiredMatches
 }
 
 CompareRivens(oldRiven, newRiven) {
@@ -251,19 +248,20 @@ IsPerfectRiven(rivenData) {
     global ACTIVE_RULES
 
     candidate := BuildCandidateFromParsedAttributes(rivenData)
+    totals := GetCandidateStats(candidate)
     result := EvaluateCandidate(ACTIVE_RULES, candidate)
     if (result.status != "KEEP") {
         return false
     }
 
-    ; Perfect means all mandatory and desired slots that have ids are satisfied.
+    ; Desired negative only counts toward "perfect" when a negative attribute is actually present.
     expectedDesired := 0
     for slot in ACTIVE_RULES.positiveSlots {
         if (slot.mode = "desired" && slot.attrIds.Length > 0) {
             expectedDesired++
         }
     }
-    if (ACTIVE_RULES.negativeSlot.mode = "desired" && ACTIVE_RULES.negativeSlot.attrIds.Length > 0) {
+    if (ACTIVE_RULES.negativeSlot.mode = "desired" && ACTIVE_RULES.negativeSlot.attrIds.Length > 0 && totals.negativeCount > 0) {
         expectedDesired++
     }
 

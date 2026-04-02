@@ -77,9 +77,22 @@ The app expects a JSON bundle with:
 Each slot uses:
 
 - `mode`: `mandatory`, `desired`, `undesired`, or `indifferent`
-- `attrIds`: an array of attribute ids for `mandatory` and `desired`; the current configurator exports `undesired` with an empty array
+- `attrIds`: an array of attribute ids for `mandatory` and `desired`; `indifferent` and `undesired` clear and ignore `attrIds`
 
 The loader validates the schema version, slot structure, and attribute ids before enabling rerolling.
+
+Rule behavior:
+
+- `mandatory`: the slot must match one of its selected attributes or the Riven is rejected
+- `desired`: the slot is optional; matching one of its selected attributes adds score
+- `negativeSlot` with `mode: "desired"` is treated as an allow-list when a negative attribute is present; a non-matching negative is rejected
+- `indifferent`: the slot is ignored completely
+- `undesired`: slot-level only; `positiveSlots[3]` rejects any third positive and `negativeSlot` rejects any negative attribute
+
+Comparison order:
+
+- valid Rivens are compared by mandatory matches first, then desired matches
+- in practice, any valid Riven has already satisfied all configured mandatory slots, so desired matches usually decide ties
 
 Current configurator `undesired` behavior is slot-level:
 
