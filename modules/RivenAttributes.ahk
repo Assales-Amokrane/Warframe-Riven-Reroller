@@ -790,13 +790,6 @@ ParseAttributeLine(attributeLine) {
     mappedId := labelMatch.attrId
     isMapped := labelMatch.isMapped
 
-    polarity := "positive"
-    if (symbol = "-") {
-        polarity := "negative"
-    } else if ((symbol = "x" || symbol = "X") && numericValue < 1) {
-        ; Multipliers under 1 are negative faction modifiers.
-        polarity := "negative"
-    }
     attrId := mappedId
     if (attrId = "") {
         unknownSlug := Slugify(rawName)
@@ -805,6 +798,7 @@ ParseAttributeLine(attributeLine) {
         }
         attrId := "unknown-" . unknownSlug
     }
+    polarity := DetermineAttributePolarity(symbol, numericValue, attrId)
 
     return {
         symbol: symbol,
@@ -817,6 +811,29 @@ ParseAttributeLine(attributeLine) {
         matchConfidence: labelMatch.confidence,
         isMapped: isMapped
     }
+}
+
+DetermineAttributePolarity(symbol, numericValue := "", attrId := "") {
+    if (attrId = "weapon-recoil") {
+        if (symbol = "-") {
+            return "positive"
+        }
+        if (symbol = "+") {
+            return "negative"
+        }
+    }
+
+    if (symbol = "-") {
+        return "negative"
+    }
+
+    numeric := CoerceNumber(numericValue, "")
+    if ((symbol = "x" || symbol = "X") && numeric != "" && numeric < 1) {
+        ; Multipliers under 1 are negative faction modifiers.
+        return "negative"
+    }
+
+    return "positive"
 }
 
 CoerceNumber(value, defaultValue := 0) {
@@ -985,7 +1002,13 @@ BuildCandidateFromParsedAttributes(rivenData) {
             attrId := slug = "" ? "unknown" : ("unknown-" . slug)
         }
 
-        polarity := attr.HasOwnProp("polarity") ? attr.polarity : (attr.symbol = "-" ? "negative" : "positive")
+        if (attr.HasOwnProp("polarity")) {
+            polarity := attr.polarity
+        } else {
+            symbol := attr.HasOwnProp("symbol") ? attr.symbol : "+"
+            value := attr.HasOwnProp("value") ? attr.value : ""
+            polarity := DetermineAttributePolarity(symbol, value, attrId)
+        }
         candidate.attributes.Push({
             attrId: attrId,
             polarity: polarity

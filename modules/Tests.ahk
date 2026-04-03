@@ -50,6 +50,8 @@ BuildUnitTestSuite() {
     tests.Push(["ParseAttributeLine percent display", "Test_ParseAttributeLinePercentDisplay"])
     tests.Push(["ParseAttributeLine multiplier polarity/mapping", "Test_ParseAttributeLineMultiplierPolarity"])
     tests.Push(["ParseAttributeLine spaced multiplier decimal", "Test_ParseAttributeLineSpacedMultiplierDecimal"])
+    tests.Push(["ParseAttributeLine weapon recoil inverts polarity", "Test_ParseAttributeLineWeaponRecoilInvertsPolarity"])
+    tests.Push(["BuildCandidateFromParsedAttributes weapon recoil fallback polarity", "Test_BuildCandidateFromParsedAttributesWeaponRecoilFallbackPolarity"])
     tests.Push(["EvaluateCandidate mandatory/desired", "Test_EvaluateCandidateMandatoryDesired"])
     tests.Push(["EvaluateCandidate desired negative allow-list", "Test_EvaluateCandidateDesiredNegativeAllowList"])
     tests.Push(["EvaluateCandidate indifferent positive slot allows empty attrs", "Test_EvaluateCandidateIndifferentPositiveSlotAllowsEmptyAttrs"])
@@ -130,6 +132,10 @@ CallUnitTestByName(testName) {
             Test_ParseAttributeLineMultiplierPolarity()
         case "Test_ParseAttributeLineSpacedMultiplierDecimal":
             Test_ParseAttributeLineSpacedMultiplierDecimal()
+        case "Test_ParseAttributeLineWeaponRecoilInvertsPolarity":
+            Test_ParseAttributeLineWeaponRecoilInvertsPolarity()
+        case "Test_BuildCandidateFromParsedAttributesWeaponRecoilFallbackPolarity":
+            Test_BuildCandidateFromParsedAttributesWeaponRecoilFallbackPolarity()
         case "Test_EvaluateCandidateMandatoryDesired":
             Test_EvaluateCandidateMandatoryDesired()
         case "Test_EvaluateCandidateDesiredNegativeAllowList":
@@ -280,6 +286,30 @@ Test_ParseAttributeLineSpacedMultiplierDecimal() {
     AssertTrue(IsObject(parsed), "ParseAttributeLine returned false for spaced multiplier decimal.")
     AssertEqual(1.79, parsed.value)
     AssertEqual("positive", parsed.polarity)
+}
+
+Test_ParseAttributeLineWeaponRecoilInvertsPolarity() {
+    reducedRecoil := ParseAttributeLine("-86 Weapon Recoil")
+    AssertTrue(IsObject(reducedRecoil), "ParseAttributeLine returned false for reduced weapon recoil.")
+    AssertEqual("weapon-recoil", reducedRecoil.attrId)
+    AssertEqual("positive", reducedRecoil.polarity, "Reduced weapon recoil should count as a positive attribute.")
+
+    increasedRecoil := ParseAttributeLine("+46 Weapon Recoil")
+    AssertTrue(IsObject(increasedRecoil), "ParseAttributeLine returned false for increased weapon recoil.")
+    AssertEqual("weapon-recoil", increasedRecoil.attrId)
+    AssertEqual("negative", increasedRecoil.polarity, "Increased weapon recoil should count as a negative attribute.")
+}
+
+Test_BuildCandidateFromParsedAttributesWeaponRecoilFallbackPolarity() {
+    candidate := BuildCandidateFromParsedAttributes({
+        attributes: [
+            {attrId: "weapon-recoil", symbol: "-", value: 86}
+        ]
+    })
+
+    AssertEqual(1, candidate.attributes.Length)
+    AssertEqual("weapon-recoil", candidate.attributes[1].attrId)
+    AssertEqual("positive", candidate.attributes[1].polarity, "Fallback candidate builder should also invert weapon recoil polarity.")
 }
 
 Test_EvaluateCandidateMandatoryDesired() {

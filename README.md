@@ -88,6 +88,8 @@ Rule behavior:
 - `negativeSlot` with `mode: "desired"` is treated as an allow-list when a negative attribute is present; a non-matching negative is rejected
 - `indifferent`: the slot is ignored completely
 - `undesired`: slot-level only; `positiveSlots[3]` rejects any third positive and `negativeSlot` rejects any negative attribute
+- `Weapon Recoil` is special-cased to match Warframe semantics: `-Weapon Recoil` counts as a positive attribute, while `+Weapon Recoil` counts as a negative attribute
+- profiles that want reduced recoil should include `weapon-recoil` in a positive slot, not in `negativeSlot`
 
 Comparison order:
 
